@@ -37,31 +37,29 @@ For more details, run `?mdgp_multistart`.
 You can modify the algorithm parameters described in the reference paper. For
 futher details, run `?mdgp_multistart`.
 
-### Generating instances from the Protein Data Bank (PDB)
+## Reading instances
 
-You can generate instances from the [PDB](https://www.rcsb.org/) using the
-Python parser developed by Wagner da Rocha. This parser produces the
-distance and predecessor matrices, as well as the reference solution file. It is
-included in the `scripts/MDGP_multistart` directory. For additional details and
-updates, please see [Wagner's Github page](https://github.com/wdarocha), in
-particular to [this link](https://github.com/wdarocha/BP_Algorithms_for_iDDGP).
-
-The parser generates three files, prefixed with `I_`, `T_` and `X_`. The
-first is the distance file (`Dfile`), the second contains the predecessors
-(`Pfile`) of each atom, and the last provides the reference solution extracted
-from the PDB (`Xfile`). These files can be loaded into Julia using
+The instances used in the reference paper are located in the
+`benchmark/MDGP_multistart/dataset` folder. Each instance consists of three
+files, prefixed with `I_`, `T_` and `X_`. The first is the distance file
+(`Dfile`), the second contains the predecessors (`Pfile`) of each atom, and the
+last provides the reference solution extracted from the PDB (`Xfile`). These
+files can be loaded into Julia using
 
 `X, Dij, D, P, residues, atoms, torsions = mdgp_read("path to I_ file", "path to T_ file"; Xfile = "path to X_ file")`
 
 For more details, run `?mdgp_read`.
 
-## Scripts
+You can also generate instances from the [PDB](https://www.rcsb.org/) using the
+Python parser developed by Wagner da Rocha. This parser produces the
+distance and predecessor matrices, as well as the reference solution file. It is
+included in the `benchmark/MDGP_multistart` directory. For additional details and
+updates, please visit [https://github.com/wdarocha/pdb-parser].
 
-Scripts for reproducing the tests reported in the references are available in the
-`scripts` folder. Note that the packages required by these scripts are not
-necessarily included among the dependencies of the MDGP package, and therefore
-must be installed manually. In addition, `python3` and dependencies required by
-the Python parser (e.g. `MDAnalysis`) must also be installed.
+Scripts for reproducing the tests reported in the reference are available in the
+`benchmark/MDGP_multistart` folder. Note that the packages required by these
+scripts are not necessarily included among the dependencies of the MDGP package,
+and therefore must be installed manually.
 
 ## Funding
 
