@@ -1,0 +1,20 @@
+To run tests, execute from Julia
+
+> include("runtests.jl")
+> run_multistart()
+
+The results are stored in the 'RESULTS' file.
+
+Please ensure that all required packages are installed in your Julia, including
+MDGP (https://github.com/leonardosecchin/MDGP.git).
+
+Tests can be ran in parallel. To do this, starts Julia specifying the number of
+threads: julia -t [NUMBER OF THREADS]
+
+Instances were generated using the PDB parser (pdb_parser.py) created by Wagner
+da Rocha. For more information and updates, visit Wagner's Github page
+https://github.com/wdarocha/pdb-parser.
+
+You can regenerate the instances by running the script parse_from_PDB.sh in the
+'dataset' folder. Note, however, that the new generated instances may differ
+from the original ones, as the parser employ pseudorandom numbers.
