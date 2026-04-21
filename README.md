@@ -69,7 +69,5 @@ Technological Development (CNPq) (grant 302520/2025-2), Brazil.
 
 ## How to cite
 
-If you use this code in your publications, please cite us. For now, you can cite
-the preprint
-
-[Secchin, da Rocha, da Rosa, Liberti, Lavor. A hybrid combinatorial-continuous strategy for solving molecular distance geometry problems. 2025](https://arxiv.org/abs/2510.19970)
+If you use this code in your publications, please cite us, see the
+`CITATIONS.bib` in the repository.
