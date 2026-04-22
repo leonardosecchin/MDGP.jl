@@ -119,6 +119,9 @@ function tight_bounds!(nv, D, P, ij_to_D, tol_exact, verbose)
                 end
 
                 if D[k,1] > D[k,2]
+                    if verbose > 0
+                        @warn "After tightening the bounds, the distance between $(i3) and $(i) was found to be incosistent (lower bound = $(D[k,1]), upper bound = $(D[k,2]))"
+                    end
                     return true
                 end
 
