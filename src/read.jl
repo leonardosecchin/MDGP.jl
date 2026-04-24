@@ -46,8 +46,8 @@ function mdgp_read(
     Pf = isfile(Pfile)
     Xf = isfile(Xfile)
 
-    @assert Df "Invalid distance file"
-    @assert Pf "Invalid predecessor file"
+    check_param(Df, "Invalid distance file")
+    check_param(Pf, "Invalid predecessor file")
 
     if !isempty(Xfile) && !Xf
         @warn "Solution file not found, ignoring..."
@@ -76,7 +76,7 @@ function mdgp_read(
     # number of atoms
     n = maximum(Dij)
 
-    @assert n == size(P,1) "Invalid predecessor list mismatch or non-consecutive atom indices"
+    check(n == size(P,1), "Invalid predecessor list mismatch or non-consecutive atom indices")
 
     D = Float64.([Ddata[:,5] Ddata[:,6]])
     res = Int64.([Ddata[:,4] Ddata[:,3]])

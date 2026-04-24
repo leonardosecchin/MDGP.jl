@@ -14,6 +14,7 @@ using DelimitedFiles
 
 export mdgp_multistart, mdgp_read
 
+include("msg.jl")
 include("vectors.jl")
 include("basic.jl")
 include("preprocess.jl")
@@ -69,56 +70,58 @@ See `mdgp_read` help.
 - `spg_lmax`: maximum value for spectral steplength (`1e+20`)
 
 ### Other
-- `max_time`: max time in seconds (`7200`)
+- `tight_bounds`: try tightening the distance bounds (`true`)
+- `max_time`: maximum time in seconds (`7200`)
 - `seed`: random seed (`<0` for any) (`-1`)
 - `verbose`: output level (`0` none, `1` normal, `2,3` detailed) (`1`)
 """
 function mdgp_multistart(
-            Dij_orig::Matrix{Int64},         # nd x 2 matrix of indices of distances
-            D_orig::Matrix{Float64},         # nd x 2 matrix of distances
-            P_orig::Matrix{Int64},           # predecessors and branching signs
-            atoms::Vector{String},           # atoms names
-            torsions::Matrix{Float64};       # torsion angles and left/right displacements (in degrees)
-            N_sols::Int64        = 1,        # number of solutions required
-            N_trial::Int64       = 500,      # max number of initial trials
-            N_conf::Int64        = 50,       # number of initial conformations
-            N_impr::Int64        = 3,        # number of improvement trials
-            N_tors::Int64        = 20,       # max number of torsion angles trials
-            N_similar::Int64     = 50,       # max number of consecutive similar init conf
-            # tolerances
-            tol_lde::Real        = 1e-2,     # tolerance for optimality (LDE)
-            tol_mde::Real        = 1e-3,     # tolerance for optimality (MDE)
-            tol_stress::Real     = 1e-7,     # tolerance for optimality (SPG, stress)
-            tol_exact::Real      = 1e-12,    # maximum interval length to consider a distance exact
-            tol_similar::Real    = 5.0,      # tolerance to consider two conformations similar
-            # SPG options
-            spg_maxit::Int64     = 30000,    # maximum number of SPG iterations
-            spg_lacktol::Real    = 1e-8,     # tolerance to declare lack of progress in SPG
-            spg_eta::Real        = 1e-4,     # Armijo's parameter
-            spg_lsm::Int64       = 10,       # length of the history for non-monotone line search
-            spg_lmin::Real       = 1e-20,    # minimum value for spectral steplength
-            spg_lmax::Real       = 1e+20,    # maximum value for spectral steplength
-            # other
-            max_time::Real       = 7200,     # max time in seconds
-            seed::Int64          = -1,       # random seed (<0 for any)
-            verbose::Int64       = 1         # output level
-            )
+    Dij_orig::Matrix{Int64},         # nd x 2 matrix of indices of distances
+    D_orig::Matrix{Float64},         # nd x 2 matrix of distances
+    P_orig::Matrix{Int64},           # predecessors and branching signs
+    atoms::Vector{String},           # atoms names
+    torsions::Matrix{Float64};       # torsion angles and left/right displacements (in degrees)
+    N_sols::Int64        = 1,        # number of solutions required
+    N_trial::Int64       = 500,      # max number of initial trials
+    N_conf::Int64        = 50,       # number of initial conformations
+    N_impr::Int64        = 3,        # number of improvement trials
+    N_tors::Int64        = 20,       # max number of torsion angles trials
+    N_similar::Int64     = 50,       # max number of consecutive similar init conf
+    # tolerances
+    tol_lde::Real        = 1e-2,     # tolerance for optimality (LDE)
+    tol_mde::Real        = 1e-3,     # tolerance for optimality (MDE)
+    tol_stress::Real     = 1e-7,     # tolerance for optimality (SPG, stress)
+    tol_exact::Real      = 1e-12,    # maximum interval length to consider a distance exact
+    tol_similar::Real    = 5.0,      # tolerance to consider two conformations similar
+    # SPG options
+    spg_maxit::Int64     = 30000,    # maximum number of SPG iterations
+    spg_lacktol::Real    = 1e-8,     # tolerance to declare lack of progress in SPG
+    spg_eta::Real        = 1e-4,     # Armijo's parameter
+    spg_lsm::Int64       = 10,       # length of the history for non-monotone line search
+    spg_lmin::Real       = 1e-20,    # minimum value for spectral steplength
+    spg_lmax::Real       = 1e+20,    # maximum value for spectral steplength
+    # other
+    tight_bounds::Bool   = true,     # try tightening the distance bounds
+    max_time::Real       = 7200,     # max time in seconds
+    seed::Int64          = -1,       # random seed (<0 for any)
+    verbose::Int64       = 1         # output level
+)
 
     # check parameters
-    @assert N_conf > 0 "N_conf must be positive"
-    @assert N_trial > 0 "N_trial must be positive"
-    @assert N_tors >= 0 "N_tors must be non negative"
-    @assert N_sols > 0 "N_sols must be positive"
-    @assert max_time > 0.0 "max_time must be positive"
+    check_param(N_conf > 0, "N_conf must be positive")
+    check_param(N_trial > 0, "N_trial must be positive")
+    check_param(N_tors >= 0, "N_tors must be non negative")
+    check_param(N_sols > 0, "N_sols must be positive")
+    check_param(max_time > 0, "max_time must be positive")
 
-    @assert spg_lsm > 0 "spg_lsm must be positive"
-    @assert (spg_eta > 0) && (spg_eta < 1.0) "spg_eta must be in (0,1)"
-    @assert spg_lmin > 0.0 "spg_lmin must be positive"
-    @assert spg_lmax > 0.0 "spg_lmax must be positive"
+    check_param(spg_lsm > 0, "spg_lsm must be positive")
+    check_param((spg_eta > 0) && (spg_eta < 1.0), "spg_eta must be in (0,1)")
+    check_param(spg_lmin > 0, "spg_lmin must be positive")
+    check_param(spg_lmax > 0, "spg_lmax must be positive")
 
-    @assert (tol_mde > 0.0) || (tol_lde > 0.0) "tol_mde or tol_lde must be positive"
-    @assert tol_exact >= 0.0 "tol_exact must be positive"
-    @assert tol_similar >= 0.0 "tol_similar must be non negative"
+    check_param((tol_mde > 0) || (tol_lde > 0), "tol_mde or tol_lde must be positive")
+    check_param(tol_exact >= 0, "tol_exact must be positive")
+    check_param(tol_similar >= 0, "tol_similar must be non negative")
 
     if seed >= 0
         Random.seed!(seed)
@@ -153,10 +156,11 @@ function mdgp_multistart(
     check_necessarydistances(nv, D, P, ij_to_D, tol_exact)
 
     # try to improve inexact distances
-    infeas = tight_bounds!(nv, D, P, ij_to_D, tol_exact, verbose)
-
-    @assert !infeas "Problem is infeasible"
-    @assert any(D[:,2] .> D[:,1]) "Instance is exact, enumerative strategies are recommended"
+    if tight_bounds
+        infeas = tight_bounds!(nv, D, P, ij_to_D, tol_exact, verbose)
+        check(!infeas, "After tightening the bounds, an infeasibility was found. Run with 'tight_bounds=false' to ignore it.")
+    end
+    check(any(D[:,2] .> D[:,1]), "Instance is exact, enumerative strategies are recommended")
 
     # groups of distances
     idxDpred = Int64[]      # between predecessors
@@ -269,22 +273,23 @@ function mdgp_multistart(
         end
 
         # new conformation
-        @inbounds if construct_conformation!(4,
-                                            Dij, D, P, ij_to_D, torsions,
-                                            X, fixed_torsions, adj, work,
-                                            N_tors, tol_lde, false
-                                            )
+        @inbounds if construct_conformation!(
+            4, Dij, D, P, ij_to_D, torsions,
+            X, fixed_torsions, adj, work,
+            N_tors, tol_lde, false
+        )
 
             total_count += 1
             # Try to improve the new conformation by minimizing LDE
             # Note that we can neglect discretization distances as
             # they will still be satisfied.
             if N_impr > 0
-                improve_conformation!(idxDprednonpred,
-                                    Dij, D, P, ij_to_D, torsions,
-                                    X, fixed_torsions, adj, work, N_impr, tol_lde,
-                                    N_tors
-                                    )
+                improve_conformation!(
+                    idxDprednonpred,
+                    Dij, D, P, ij_to_D, torsions,
+                    X, fixed_torsions, adj, work, N_impr, tol_lde,
+                    N_tors
+                )
             end
 
             mde, lde = MDE_LDE(Dij, D, X)

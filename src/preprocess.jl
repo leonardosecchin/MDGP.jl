@@ -12,23 +12,23 @@ end
 
 # perform basics tests on data
 function check_basics(Dij, D, P)
-    @assert size(D) == size(Dij) "Matrices D and Dij must have the same size"
-    @assert size(P) == (maximum(Dij),4) "P has an incorrect size."
-    @assert (minimum(P[4:end,1:3]) > 0) && (maximum(abs.(P[4:end,4])) <= 1) "P has incorrect entries"
+    check_param(size(D) == size(Dij), "Matrices D and Dij must have the same size")
+    check_param(size(P) == (maximum(Dij),4), "P has an incorrect size.")
+    check_param((minimum(P[4:end,1:3]) > 0) && (maximum(abs.(P[4:end,4])) <= 1), "P has incorrect entries")
 
     for i in 1:size(P,1)
-        @assert (maximum(P[i,1:3]) < i) "P has incorrect entries"
+        check(maximum(P[i,1:3]) < i, "P has incorrect entries")
     end
 
-    @assert size(Dij,2) == 2 "Dij must be a #distances x 2 matrix with columns i, j"
-    @assert size(D,2) == 2 "D must be a #distances x 2 matrix with columns lower_dij, upper_dij"
+    check(size(Dij,2) == 2, "Dij must be a #distances x 2 matrix with columns i, j")
+    check(size(D,2) == 2, "D must be a #distances x 2 matrix with columns lower_dij, upper_dij")
 
     # adjust Dij so that Dij[:,1] .< Dij[:,2] and verify if bounds are valid
     @inbounds @views for i = 1:size(Dij,1)
         if Dij[i,1] > Dij[i,2]
             Dij[i,1:2] .= Dij[i,2:-1:1]
         end
-        @assert (D[i,1] <= D[i,2]) "Invalid lower/upper bounds on distance between vertices $(Dij[i,1]) and $(Dij[i,2])"
+        check(D[i,1] <= D[i,2], "Invalid lower/upper bounds on distance between vertices $(Dij[i,1]) and $(Dij[i,2])")
     end
 end
 
@@ -40,13 +40,13 @@ function check_necessarydistances(nv, D, P, ij_to_D, tol_exact)
     @inbounds @views for i = 3:nv
         i1 = ij_to_D[i,P[i,1]]
         i2 = ij_to_D[i,P[i,2]]
-        @assert (i1 > 0) && exact[i1] "Necessary exact distances from vertex $(i) were not provided"
-        @assert (i2 > 0) && exact[i2] "Necessary exact distances from vertex $(i) were not provided"
+        check((i1 > 0) && exact[i1], "Necessary exact distances from vertex $(i) were not provided")
+        check((i2 > 0) && exact[i2], "Necessary exact distances from vertex $(i) were not provided")
     end
 
     # distances d(i3,i) (exact or interval)
     @inbounds @views for i = 4:nv
-        @assert ij_to_D[i,P[i,3]] > 0 "Exact or interval distance between $(P[i,3]) and $(i) was not provided"
+        check(ij_to_D[i,P[i,3]] > 0, "Exact or interval distance between $(P[i,3]) and $(i) was not provided")
     end
 end
 
@@ -119,8 +119,8 @@ function tight_bounds!(nv, D, P, ij_to_D, tol_exact, verbose)
                 end
 
                 if D[k,1] > D[k,2]
-                    if verbose > 0
-                        @warn "After tightening the bounds, the distance between $(i3) and $(i) was found to be inconsistent (lower bound = $(D[k,1]), upper bound = $(D[k,2]))"
+                    if verbose > 1
+                        @warn "After tightening the bounds, the distance between $(i3) and $(i) was found to be inconsistent"
                     end
                     return true
                 end

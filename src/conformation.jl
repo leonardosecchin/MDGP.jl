@@ -24,11 +24,18 @@ end
 # construct the conformation according to 'fixed_torsions'
 function construct_conformation!(
     l,
-    Dij, D, P, ij_to_D,
+    Dij,
+    D,
+    P,
+    ij_to_D,
     torsions,
-    X, fixed_torsions, adj,
-    work::WORKSPACE, maxtrials,
-    tol_lde, fixsign
+    X,
+    fixed_torsions,
+    adj,
+    work::WORKSPACE,
+    maxtrials,
+    tol_lde,
+    fixsign
 )
 
     @inbounds @views if (l <= size(X,2))
@@ -59,8 +66,7 @@ function construct_conformation!(
 
             # cosine/sine of the torsion angle omega_l
             omega_l = pi * fixed_torsions[l] / 180.0
-            cosomega_l = cos(omega_l)
-            sinomega_l = sin(omega_l)
+            sinomega_l, cosomega_l = sincos(omega_l)
 
             X[1:3,l] .= X[1:3,l1] .+ d10*work.U*[-costheta_l ;
                                                 sintheta_l*cosomega_l ;
@@ -117,11 +123,12 @@ function construct_conformation!(
         fixed_torsions[l] = besttorsion
 
         # pass to the next level
-        construct_conformation!(l+1,
-                                Dij, D, P, ij_to_D, torsions,
-                                X, fixed_torsions, adj,
-                                work, maxtrials, tol_lde, fixsign
-                                )
+        construct_conformation!(
+            l+1,
+            Dij, D, P, ij_to_D, torsions,
+            X, fixed_torsions, adj,
+            work, maxtrials, tol_lde, fixsign
+        )
     else
         # end of construction
         return true
@@ -129,10 +136,21 @@ function construct_conformation!(
 end
 
 # try to improve a given conformation w.r.t. "objective" by flipping signs of given atoms
-function improve_conformation!(idxD, Dij, D, torsions, P, ij_to_D,
-                               X, fixed_torsions, adj,
-                               work, num_pass, tol_lde, maxtrials
-                               )
+function improve_conformation!(
+    idxD,
+    Dij,
+    D,
+    torsions,
+    P,
+    ij_to_D,
+    X,
+    fixed_torsions,
+    adj,
+    work,
+    num_pass,
+    tol_lde,
+    maxtrials
+)
 
     best_lde = LDE(Dij, D, idxD, X)
 
@@ -169,11 +187,12 @@ function improve_conformation!(idxD, Dij, D, torsions, P, ij_to_D,
             end
 
             # reconstruct conformation from the last non udpated vertex
-            construct_conformation!(update_from_v,
-                                    Dij, D, torsions, P, ij_to_D,
-                                    X, fixed_torsions, adj,
-                                    work, maxtrials, tol_lde, true
-                                    )
+            construct_conformation!(
+                update_from_v,
+                Dij, D, torsions, P, ij_to_D,
+                X, fixed_torsions, adj,
+                work, maxtrials, tol_lde, true
+            )
 
             new_lde = LDE(Dij, D, idxD, X)
 
@@ -195,11 +214,12 @@ function improve_conformation!(idxD, Dij, D, torsions, P, ij_to_D,
 
         # the conformation needs to be udpated; no torsion angle will be re-sorted
         if recompute
-            construct_conformation!(update_from_v,
-                                    Dij, D, torsions, P, ij_to_D,
-                                    X, fixed_torsions, adj,
-                                    work, 0, tol_lde, true
-                                    )
+            construct_conformation!(
+                update_from_v,
+                Dij, D, torsions, P, ij_to_D,
+                X, fixed_torsions, adj,
+                work, 0, tol_lde, true
+            )
         end
 
         if !changed
