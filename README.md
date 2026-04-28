@@ -7,7 +7,7 @@ Distance Geometry Problem (MDGP) with interval data, as described in
 
 ## Installation
 
-`]add https://github.com/leonardosecchin/MDGP.git`
+`]add https://github.com/leonardosecchin/MDGP`
 
 ## Usage
 
