@@ -1,4 +1,4 @@
-# MDGP
+# MDGP.jl
 
 This is an implementation of the multistart strategy to solve the Molecular
 Distance Geometry Problem (MDGP) with interval data, as described in
@@ -7,7 +7,7 @@ Distance Geometry Problem (MDGP) with interval data, as described in
 
 ## Installation
 
-`]add https://github.com/leonardosecchin/MDGP`
+`]add https://github.com/leonardosecchin/MDGP.jl`
 
 ## Usage
 
