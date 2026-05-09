@@ -12,9 +12,11 @@ using Random
 using Distributions
 using DelimitedFiles
 
+export MDGP_PARAMETERS, mdgp_default_parameters
 export mdgp_multistart, mdgp_read
 
-include("msg.jl")
+include("structs.jl")
+include("check.jl")
 include("vectors.jl")
 include("basic.jl")
 include("preprocess.jl")
@@ -26,7 +28,7 @@ include("read.jl")
 # Main function
 ########################
 """
-    sols, types, ldes, mdes, time_init, time_total = mdgp_multistart(Dij, D, P, atoms, torsions; [OPTIONS])
+    sols, types, ldes, mdes, time_init, time_total = mdgp_multistart(Dij, D, P, atoms, torsions; par, [OPTIONS])
 
 The multistart strategy for MDGP described in
 
@@ -38,15 +40,34 @@ See `mdgp_read` help.
 ## Output
 - `sols`: list of conformations computed
 - `types`: vector of status of each conformation in `sols`
-  - `-1`: infeasible
-  - `1`: feasible conformation computed before applying SPG
-  - `2`: feasible conformation computed after applying SPG
+- `-1`: infeasible
+- `1`: feasible conformation computed before applying SPG
+- `2`: feasible conformation computed after applying SPG
 - `ldes`: LDE of each conformation in `sols`
 - `mdes`: MDE of each conformation in `sols`
 - `time_init`: preprocessing time
 - `time_total`: total time
 
-## Optional parameters and their default values
+## Options
+
+- `seed`: random seed (`<0` for any) (`-1`)
+- `verbose`: output level (`0` none, `1` normal, `2,3` detailed) (`1`)
+
+## Parameters
+
+Parameters are passed through input `par`, which is a `MDGP_PARAMETERS` structure.
+If not provided, it is initialized by the function `mdgp_default_parameters()`,
+which sets the default values as listed below. To set different values, first
+initialize the `MDGP_PARAMETERS` structure:
+
+`par = mdgp_default_parameters()`
+
+Then, you can modify it. For example, to set the number of initial trials
+to 1000, run `par.N_trial = 1000`. The complete list of parameters and their
+default values is given below.
+
+### Generation of conformations
+
 - `N_sols`: number of solutions required (`1`)
 - `N_trial`: max number of initial trials (`500`)
 - `N_conf`: number of initial conformations (`50`)
@@ -55,6 +76,7 @@ See `mdgp_read` help.
 - `N_similar`: max number of consecutive similar initial conformations (`50`)
 
 ### Tolerances
+
 - `tol_lde`: tolerance for optimality (LDE) (`1e-2`)
 - `tol_mde`: tolerance for optimality (MDE) (`1e-3`)
 - `tol_stress`: tolerance for optimality (SPG, stress) (`1e-7`)
@@ -62,7 +84,8 @@ See `mdgp_read` help.
 - `tol_similar`: tolerance to consider two conformations similar (`5.0`)
 
 ### SPG options
-- `spg_maxit`: maximum number of SPG iterations (`30000`)
+
+- `spg_maxit`: maximum number of SPG iterations equals to max(spg_maxit, 20*#atoms) (`30000`)
 - `spg_lacktol`: tolerance to declare lack of progress (`1e-8`)
 - `spg_eta`: Armijo's parameter (`1e-4`)
 - `spg_lsm`: length of the history for non-monotone line search (`10`)
@@ -70,58 +93,36 @@ See `mdgp_read` help.
 - `spg_lmax`: maximum value for spectral steplength (`1e+20`)
 
 ### Other
+
 - `tight_bounds`: try tightening the distance bounds (`true`)
 - `max_time`: maximum time in seconds (`7200`)
-- `seed`: random seed (`<0` for any) (`-1`)
-- `verbose`: output level (`0` none, `1` normal, `2,3` detailed) (`1`)
 """
 function mdgp_multistart(
     Dij_orig::Matrix{Int64},         # nd x 2 matrix of indices of distances
     D_orig::Matrix{Float64},         # nd x 2 matrix of distances
     P_orig::Matrix{Int64},           # predecessors and branching signs
     atoms::Vector{String},           # atoms names
-    torsions::Matrix{Float64};       # torsion angles and left/right displacements (in degrees)
-    N_sols::Int64        = 1,        # number of solutions required
-    N_trial::Int64       = 500,      # max number of initial trials
-    N_conf::Int64        = 50,       # number of initial conformations
-    N_impr::Int64        = 3,        # number of improvement trials
-    N_tors::Int64        = 20,       # max number of torsion angles trials
-    N_similar::Int64     = 50,       # max number of consecutive similar init conf
-    # tolerances
-    tol_lde::Real        = 1e-2,     # tolerance for optimality (LDE)
-    tol_mde::Real        = 1e-3,     # tolerance for optimality (MDE)
-    tol_stress::Real     = 1e-7,     # tolerance for optimality (SPG, stress)
-    tol_exact::Real      = 1e-12,    # maximum interval length to consider a distance exact
-    tol_similar::Real    = 5.0,      # tolerance to consider two conformations similar
-    # SPG options
-    spg_maxit::Int64     = 30000,    # maximum number of SPG iterations
-    spg_lacktol::Real    = 1e-8,     # tolerance to declare lack of progress in SPG
-    spg_eta::Real        = 1e-4,     # Armijo's parameter
-    spg_lsm::Int64       = 10,       # length of the history for non-monotone line search
-    spg_lmin::Real       = 1e-20,    # minimum value for spectral steplength
-    spg_lmax::Real       = 1e+20,    # maximum value for spectral steplength
-    # other
-    tight_bounds::Bool   = true,     # try tightening the distance bounds
-    max_time::Real       = 7200,     # max time in seconds
+    tor_orig::Matrix{Float64};       # torsion angles and left/right displacements (in degrees)
+    par::MDGP_PARAMETERS = mdgp_default_parameters(),
     seed::Int64          = -1,       # random seed (<0 for any)
     verbose::Int64       = 1         # output level
 )
 
     # check parameters
-    check_param(N_conf > 0, "N_conf must be positive")
-    check_param(N_trial > 0, "N_trial must be positive")
-    check_param(N_tors >= 0, "N_tors must be non negative")
-    check_param(N_sols > 0, "N_sols must be positive")
-    check_param(max_time > 0, "max_time must be positive")
+    check_param(par.N_conf > 0, "N_conf must be positive")
+    check_param(par.N_trial > 0, "N_trial must be positive")
+    check_param(par.N_tors >= 0, "N_tors must be non negative")
+    check_param(par.N_sols > 0, "N_sols must be positive")
+    check_param(par.max_time > 0, "max_time must be positive")
 
-    check_param(spg_lsm > 0, "spg_lsm must be positive")
-    check_param((spg_eta > 0) && (spg_eta < 1.0), "spg_eta must be in (0,1)")
-    check_param(spg_lmin > 0, "spg_lmin must be positive")
-    check_param(spg_lmax > 0, "spg_lmax must be positive")
+    check_param(par.spg_lsm > 0, "spg_lsm must be positive")
+    check_param((par.spg_eta > 0) && (par.spg_eta < 1.0), "spg_eta must be in (0,1)")
+    check_param(par.spg_lmin > 0, "spg_lmin must be positive")
+    check_param(par.spg_lmax > 0, "spg_lmax must be positive")
 
-    check_param((tol_mde > 0) || (tol_lde > 0), "tol_mde or tol_lde must be positive")
-    check_param(tol_exact >= 0, "tol_exact must be positive")
-    check_param(tol_similar >= 0, "tol_similar must be non negative")
+    check_param((par.tol_mde > 0) || (par.tol_lde > 0), "tol_mde or tol_lde must be positive")
+    check_param(par.tol_exact >= 0, "tol_exact must be positive")
+    check_param(par.tol_similar >= 0, "tol_similar must be non negative")
 
     if seed >= 0
         Random.seed!(seed)
@@ -129,48 +130,28 @@ function mdgp_multistart(
 
     time_pre = @elapsed begin
 
-    Dij = deepcopy(Dij_orig)
-    D = deepcopy(D_orig)
-
-    # P has 4 columns: predecessors (cols 1 to 3) and branching signs (col 4)
-    P = init_P(P_orig, maximum(Dij))
-
-    # data consistency basic check
-    check_basics(Dij, D, P)
-
-    # consolidate repeated distances
-    consolidate_distances!(Dij, D)
-
-    # number of vertices and distances
-    nv = maximum(Dij)
-    nd = size(Dij,1)
-
-    # construct the map (i,j) to the position in D
-    ij_to_D = spzeros(Int64, nv, nv)
-    @inbounds @views for k in 1:nd
-        ij_to_D[ Dij[k,1], Dij[k,2] ] = k
-    end
-    ij_to_D = Symmetric(ij_to_D, :U)
+    # problem data and preprocess
+    data = init_problem_data(Dij_orig, D_orig, P_orig, tor_orig)
 
     # check the existence of necessary distances
-    check_necessarydistances(nv, D, P, ij_to_D, tol_exact)
+    check_necessarydistances(data, par)
 
     # try to improve inexact distances
-    if tight_bounds
-        infeas = tight_bounds!(nv, D, P, ij_to_D, tol_exact, verbose)
+    if par.tight_bounds
+        infeas = tight_bounds!(data, par, verbose)
         check(!infeas, "After tightening the bounds, an infeasibility was found. Run with 'tight_bounds=false' to ignore it.")
     end
-    check(any(D[:,2] .> D[:,1]), "Instance is exact, enumerative strategies are recommended")
+    check(any(data.D[:,2] .> data.D[:,1]), "Instance is exact, enumerative strategies are recommended")
 
     # groups of distances
     idxDpred = Int64[]      # between predecessors
     idxDnonpred = Int64[]   # extra
     idxDvdw = Int64[]       # Van der Walls
-    @inbounds for k in 1:size(D,1)
-        i,j = Dij[k,1:2]
-        if (j in P[i,1:3]) || (i in P[j,1:3])
+    @inbounds for k in 1:size(data.D,1)
+        i,j = data.Dij[k,1:2]
+        if (j in data.P[i,1:3]) || (i in data.P[j,1:3])
             push!(idxDpred, k)
-        elseif D[k,2] < 900.0
+        elseif data.D[k,2] < 900.0
             push!(idxDnonpred, k)
         else
             push!(idxDvdw, k)
@@ -184,11 +165,11 @@ function mdgp_multistart(
     idxDprednonpred = consec_range(union(idxDpred,idxDnonpred))
 
     # adjacent distances to each atom
-    adj = Vector{Vector{Int64}}(undef, nv)
-    for v in 1:nv
+    adj = Vector{Vector{Int64}}(undef, data.nv)
+    for v in 1:data.nv
         adj[v] = Int64[]
-        for k in 1:nd
-            if Dij[k,2] == v
+        for k in 1:data.nd
+            if data.Dij[k,2] == v
                 push!(adj[v], k)
             end
         end
@@ -198,10 +179,10 @@ function mdgp_multistart(
     # First definitions and allocation
     # ======================
 
-    X = start_conformation(nv, D, ij_to_D)
+    X = start_conformation(data)
 
     # initialize workspace
-    work = init_workspace(nv, nd, spg_lsm)
+    work = init_workspace(data, par)
 
     # stress weights
     work.w .= 1.0
@@ -212,7 +193,7 @@ function mdgp_multistart(
 
     total_count = 0
 
-    fixed_torsions = Vector{Float64}(undef, nv)
+    fixed_torsions = Vector{Float64}(undef, data.nv)
     fixed_torsions[1:3] .= 0.0
 
     # vector of solutions
@@ -226,10 +207,10 @@ function mdgp_multistart(
 
     # similarity between generated conformations
     consec_similar = 0
-    if nv <= 500
-        rmsd_idx = 1:nv
+    if data.nv <= 500
+        rmsd_idx = 1:data.nv
     else
-        rmsd_idx = (1:nv)[atoms .== "CA"]
+        rmsd_idx = (1:data.nv)[atoms .== "CA"]
     end
     Xtmp1 = similar(X)
     Xtmp2 = similar(X)
@@ -237,9 +218,9 @@ function mdgp_multistart(
     end    # end of @elapsed begin
 
     if verbose > 0
-        ndexact = count(D[:,2] .- D[:,1] .<= tol_exact)
+        ndexact = count(data.D[:,2] .- data.D[:,1] .<= par.tol_exact)
         @printf("Time preprocess phase and allocation: %.6lf s\n", time_pre)
-        println("Preprocessed data has $(nv) atoms, $(ndexact) exact distances and $(nd - ndexact) interval distances.")
+        println("Preprocessed data has $(data.nv) atoms, $(ndexact) exact distances and $(data.nd - ndexact) interval distances.")
     end
 
     # ======================
@@ -253,7 +234,7 @@ function mdgp_multistart(
     time_total = 0.0
     time_init = 0.0
 
-    while (length(sols) < N_conf) && (total_count < N_trial)
+    while (length(sols) < par.N_conf) && (total_count < par.N_trial)
 
         time_initk = @elapsed begin
 
@@ -261,40 +242,35 @@ function mdgp_multistart(
             print("\rAttempt $(total_count), $(length(sols)) conformations found")
         end
 
-        if count(soltypes .>= 0) >= N_sols
+        if count(soltypes .>= 0) >= par.N_sols
             stop = true
             break
         end
 
         # sort torsion angles
-        @inbounds for v in 4:nv
-            sgn = (P[v,4] == 0) ? rand([-1,1]) : P[v,4]
-            fixed_torsions[v] = sort_torsion_angle(v, P, torsions, sgn)
+        @inbounds for v in 4:data.nv
+            sgn = (data.P[v,4] == 0) ? rand([-1,1]) : data.P[v,4]
+            fixed_torsions[v] = sort_torsion_angle(v, data, sgn)
         end
 
         # new conformation
         @inbounds if construct_conformation!(
-            4, Dij, D, P, ij_to_D, torsions,
-            X, fixed_torsions, adj, work,
-            N_tors, tol_lde, false
+            4, data, X, fixed_torsions, adj, work, par.N_tors, par, false
         )
 
             total_count += 1
             # Try to improve the new conformation by minimizing LDE
             # Note that we can neglect discretization distances as
             # they will still be satisfied.
-            if N_impr > 0
+            if par.N_impr > 0
                 improve_conformation!(
-                    idxDprednonpred,
-                    Dij, D, P, ij_to_D, torsions,
-                    X, fixed_torsions, adj, work, N_impr, tol_lde,
-                    N_tors
+                    idxDprednonpred, data, X, fixed_torsions, adj, work, par
                 )
             end
 
-            mde, lde = MDE_LDE(Dij, D, X)
+            mde, lde = MDE_LDE(data, X)
 
-            if (lde <= tol_lde) || (mde <= tol_mde)
+            if (lde <= par.tol_lde) || (mde <= par.tol_mde)
                 stop = true
             end
 
@@ -305,7 +281,7 @@ function mdgp_multistart(
                 for c in 1:length(sols)
                     centralize!(sols[c], Xtmp2, rmsd_idx)
                     rmsd = rmsd_protein(Xtmp1, Xtmp2, rmsd_idx)
-                    if rmsd <= tol_similar
+                    if rmsd <= par.tol_similar
                         rmsdpass = false
                         break
                     end
@@ -314,7 +290,7 @@ function mdgp_multistart(
                     consec_similar = 0
                 else
                     consec_similar += 1
-                    if consec_similar >= N_similar
+                    if consec_similar >= par.N_similar
                         # maximum number of consecutive trials with similar conformations
                         stop = true
                     end
@@ -324,8 +300,8 @@ function mdgp_multistart(
             spg_applied = false
             if !stop && rmsdpass
                 # different infeasible conformation, try to improve it through SPG
-                @views for k in 1:nd
-                    i,j = Dij[k,1:2]
+                @views for k in 1:data.nd
+                    i,j = data.Dij[k,1:2]
                     work.dists[k] = euclidean(X[1:3,i], X[1:3,j])
                 end
 
@@ -334,15 +310,12 @@ function mdgp_multistart(
                     println("\n\n>>> Trying to improve conformation through SPG")
                 end
                 strs, spg_it, st = spg(
-                    1:3*nv, idxDprednonpred, X, Dij, D, ij_to_D,
-                    tol_mde, tol_lde, tol_stress,
-                    max(spg_maxit, 20*nv), spg_lacktol, spg_eta, spg_lmin, spg_lmax, spg_lsm,
-                    work, verbose
+                    1:3*data.nv, idxDprednonpred, X, data, par, work, verbose
                 )
 
-                mde, lde = MDE_LDE(Dij, D, X)
+                mde, lde = MDE_LDE(data, X)
 
-                if (lde <= tol_lde) || (mde <= tol_mde)
+                if (lde <= par.tol_lde) || (mde <= par.tol_mde)
                     stop = true
                 end
 
@@ -357,7 +330,7 @@ function mdgp_multistart(
                 push!(stress, spg_applied ? strs : Inf)
             end
 
-            if (lde <= tol_lde) || (mde <= tol_mde)
+            if (lde <= par.tol_lde) || (mde <= par.tol_mde)
                 # X is feasible!
                 soltypes[end] = spg_applied ? 2 : 1
 
@@ -375,7 +348,7 @@ function mdgp_multistart(
         time_init += time_initk
         time_total = time_pre + time_init
 
-        if stop || (time_total >= max_time)
+        if stop || (time_total >= par.max_time)
             break
         end
     end

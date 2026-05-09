@@ -1,54 +1,6 @@
-struct WORKSPACE
-    U::Matrix{Float64}
-    w::Vector{Float64}
-    dists::Vector{Float64}
-    Zd::Vector{Float64}
-    GX::Matrix{Float64}
-    Gd::Vector{Float64}
-    Pd::Vector{Float64}
-    ZXnew::Matrix{Float64}
-    Zdnew::Vector{Float64}
-    GXnew::Matrix{Float64}
-    Gdnew::Vector{Float64}
-    SX::Matrix{Float64}
-    YX::Matrix{Float64}
-    Sd::Vector{Float64}
-    Yd::Vector{Float64}
-    ZXbest::Matrix{Float64}
-    Zdbest::Vector{Float64}
-    idxD::Matrix{Int64}
-    work::Vector{Float64}
-    lastf::Vector{Float64}
-end
-
-function init_workspace(nv, nd, lsm)
-    return WORKSPACE(
-        Matrix{Float64}(undef,3,3),  # U
-        Vector{Float64}(undef,nd),   # w
-        Vector{Float64}(undef,nd),   # dists
-        Vector{Float64}(undef,nd),   # Zd
-        Matrix{Float64}(undef,3,nv), # GX
-        Vector{Float64}(undef,nd),   # Gd
-        Vector{Float64}(undef,nd),   # Pd
-        Matrix{Float64}(undef,3,nv), # ZXnew
-        Vector{Float64}(undef,nd),   # Zdnew
-        Matrix{Float64}(undef,3,nv), # GXnew
-        Vector{Float64}(undef,nd),   # Gdnew
-        Matrix{Float64}(undef,3,nv), # SX
-        Matrix{Float64}(undef,3,nv), # YX
-        Vector{Float64}(undef,nd),   # Sd
-        Vector{Float64}(undef,nd),   # Yd
-        Matrix{Float64}(undef,3,nv), # ZXbest
-        Vector{Float64}(undef,nd),   # Zdbest
-        Matrix{Int64}(undef,nv,2),   # idxD
-        Vector{Float64}(undef,nv),   # work
-        fill(-Inf, lsm)              # lastf
-    )
-end
-
 # return [ lower d(i,j) ; upper d(i,j)] from D. Distance d(i,j) must exists in D
-@inline function d(i, j, D, ij_to_D)
-    return @inbounds @views D[ij_to_D[i,j], 1:end]
+@inline function d(i, j, data::DATA)
+    return @inbounds @views data.D[data.ij_to_D[i,j], 1:end]
 end
 
 
@@ -107,12 +59,12 @@ end
 
 
 # Mean/Largest Distance Error (MDE/LDE)
-function LDE(Dij, D, idxD, X::Matrix{Float64})
+function LDE(data::DATA, idxD, X::Matrix{Float64})
     lde = 0.0
 
     @inbounds @views for k in idxD
-        dist = euclidean(X[1:3,Dij[k,1]], X[1:3,Dij[k,2]])
-        L,U = D[k,1:2]
+        dist = euclidean(X[1:3,data.Dij[k,1]], X[1:3,data.Dij[k,2]])
+        L,U = data.D[k,1:2]
         if L == U
             lde = max(lde, abs(L - dist)/L)
         else
@@ -123,13 +75,13 @@ function LDE(Dij, D, idxD, X::Matrix{Float64})
     return lde
 end
 
-function MDE_LDE(Dij, D, idxD, X::Matrix{Float64})
+function MDE_LDE(data::DATA, idxD, X::Matrix{Float64})
     mde = 0.0
     lde = 0.0
 
     @inbounds @views for k in idxD
-        dist = euclidean(X[1:3,Dij[k,1]], X[1:3,Dij[k,2]])
-        L,U = D[k,1:2]
+        dist = euclidean(X[1:3,data.Dij[k,1]], X[1:3,data.Dij[k,2]])
+        L,U = data.D[k,1:2]
         if L == U
             mde += abs(L - dist)/L
             lde = max(lde, abs(L - dist)/L)
@@ -142,14 +94,14 @@ function MDE_LDE(Dij, D, idxD, X::Matrix{Float64})
     return mde/length(idxD), lde
 end
 
-MDE_LDE(Dij, D, X::Matrix{Float64}) = MDE_LDE(Dij, D, 1:size(D,1), X)
+MDE_LDE(data::DATA, X::Matrix{Float64}) = MDE_LDE(data, 1:size(data.D,1), X)
 
-function MDE_LDE(Dij, D, idxD, dists::Vector{Float64})
+function MDE_LDE(data::DATA, idxD, dists::Vector{Float64})
     mde = 0.0
     lde = 0.0
 
     @inbounds @views for k in idxD
-        L,U = D[k,1:2]
+        L,U = data.D[k,1:2]
         if L == U
             mde += abs(L - dists[k])/L
             lde = max(lde, abs(L - dists[k])/L)
