@@ -1,8 +1,13 @@
 function spg(
-    idxX, idxD, ZX, data::DATA, par::MDGP_PARAMETERS,
-    work::WORKSPACE,
+    idxD, ZX, data::DATA, par::MDGP_PARAMETERS,
+    work::SPG_WORKSPACE,
     verbose
 )
+    @views for k in 1:data.nd
+        i,j = data.Dij[k,1:2]
+        work.dists[k] = euclidean(ZX[1:3,i], ZX[1:3,j])
+    end
+
     # Zd_ij = projection of |Xi - Xj| onto the interval distance
     @inbounds @views for k in idxD
         work.Zd[k] = clamp(work.dists[k], data.D[k,1], data.D[k,2])
@@ -12,7 +17,7 @@ function spg(
     sig = stress(idxD, data.Dij, work.Zd, work)
 
     # stress gradient at the initial point
-    grad_stress(idxX, idxD, data.Dij, ZX, work.Zd, work.GX, work.Gd, work)
+    grad_stress(idxD, data.Dij, ZX, work.Zd, work.GX, work.Gd, work)
 
     # stress history
     work.lastf .= -Inf
@@ -20,24 +25,24 @@ function spg(
 
     # save initial solution as the best
     sigbest = sig
-    cp!(idxX, work.ZXbest, ZX)
+    cp!(work.ZXbest, ZX)
     cp!(idxD, work.Zdbest, work.Zd)
 
     # initial spectral steplength
-    nXD = max(norm(ZX[idxX], Inf), norm(work.Zd[idxD], Inf))
+    nXD = max(norm(ZX, Inf), norm(work.Zd[idxD], Inf))
     tsmall = max(1e-7 * nXD, 1e-10)
-    XpaY!(idxX, work.ZXnew, ZX, -tsmall, work.GX)
+    XpaY!(work.ZXnew, ZX, -tsmall, work.GX)
     XpaY!(idxD, work.Zdnew, work.Zd, -tsmall, work.Gd)
-    grad_stress(idxX, idxD, data.Dij, work.ZXnew, work.Zdnew, work.GXnew, work.Gdnew, work)
+    grad_stress(idxD, data.Dij, work.ZXnew, work.Zdnew, work.GXnew, work.Gdnew, work)
 
-    XpaY!(idxX, work.SX, work.ZXnew, -1.0, ZX)
-    XpaY!(idxX, work.YX, work.GXnew, -1.0, work.GX)
+    XpaY!(work.SX, work.ZXnew, -1.0, ZX)
+    XpaY!(work.YX, work.GXnew, -1.0, work.GX)
 
     XpaY!(idxD, work.Sd, work.Zdnew, -1.0, work.Zd)
     XpaY!(idxD, work.Yd, work.Gdnew, -1.0, work.Gd)
 
-    SS = XdotY(idxX, work.SX, work.SX) + XdotY(idxD, work.Sd, work.Sd)
-    SY = XdotY(idxX, work.SX, work.YX) + XdotY(idxD, work.Sd, work.Yd)
+    SS = XdotY(work.SX, work.SX) + XdotY(idxD, work.Sd, work.Sd)
+    SY = XdotY(work.SX, work.YX) + XdotY(idxD, work.Sd, work.Yd)
 
     lambda = (SY <= 0.0) ? par.spg_lmax : clamp(SS/SY, par.spg_lmin, par.spg_lmax)
 
@@ -72,7 +77,7 @@ function spg(
                 print_info(iter, sig, true, t)
             end
 
-            cp!(idxX, ZX, work.ZXbest)
+            cp!(ZX, work.ZXbest)
             status = 3
             break
         end
@@ -97,7 +102,7 @@ function spg(
         # line search
         t = 1.0
 
-        XpaY!(idxX, work.ZXnew, ZX, -lambda, work.GX)
+        XpaY!(work.ZXnew, ZX, -lambda, work.GX)
         XpY!(idxD, work.Zdnew, work.Zd, work.Pd)
         @views for k in idxD
             i,j = data.Dij[k,1:2]
@@ -106,7 +111,7 @@ function spg(
         sig = stress(idxD, data.Dij, work.Zdnew, work)
 
         # inner product <G,P>
-        GP = lambda*XdotY(idxX, work.GX, work.GX) + XdotY(idxD, work.Gd, work.Pd)
+        GP = lambda * XdotY(work.GX, work.GX) + XdotY(idxD, work.Gd, work.Pd)
 
         while (sig > max_sig + t*par.spg_eta*GP) && (t > tmin)
             if t <= 0.1
@@ -124,7 +129,7 @@ function spg(
             end
 
             # new trial
-            XpaY!(idxX, work.ZXnew, ZX, -t*lambda, work.GX)
+            XpaY!(work.ZXnew, ZX, -t*lambda, work.GX)
             XpaY!(idxD, work.Zdnew, work.Zd,  t, work.Pd)
             @views for k in idxD
                 i,j = data.Dij[k,1:2]
@@ -139,31 +144,31 @@ function spg(
                 print_info(iter, sig, true, t)
             end
 
-            cp!(idxX, ZX, work.ZXbest)
+            cp!(ZX, work.ZXbest)
             status = 4
             break
         else
             # gradient at Znew
-            grad_stress(idxX, idxD, data.Dij, work.ZXnew, work.Zdnew, work.GXnew, work.Gdnew, work)
+            grad_stress(idxD, data.Dij, work.ZXnew, work.Zdnew, work.GXnew, work.Gdnew, work)
 
             # new spectral steplength
-            XpaY!(idxX, work.SX, work.ZXnew, -1.0, ZX)
-            XpaY!(idxX, work.YX, work.GXnew, -1.0, work.GX)
+            XpaY!(work.SX, work.ZXnew, -1.0, ZX)
+            XpaY!(work.YX, work.GXnew, -1.0, work.GX)
 
             XpaY!(idxD, work.Sd, work.Zdnew, -1.0, work.Zd)
             XpaY!(idxD, work.Yd, work.Gdnew, -1.0, work.Gd)
 
-            SS = XdotY(idxX, work.SX, work.SX) + XdotY(idxD, work.Sd, work.Sd)
-            SY = XdotY(idxX, work.SX, work.YX) + XdotY(idxD, work.Sd, work.Yd)
+            SS = XdotY(work.SX, work.SX) + XdotY(idxD, work.Sd, work.Sd)
+            SY = XdotY(work.SX, work.YX) + XdotY(idxD, work.Sd, work.Yd)
 
             lambda = (SY <= 0.0) ? par.spg_lmax : min( par.spg_lmax, max(par.spg_lmin, SS/SY) )
 
             # Z = Znew
-            cp!(idxX, ZX, work.ZXnew)
+            cp!(ZX, work.ZXnew)
             cp!(idxD, work.Zd, work.Zdnew)
 
             # G = Gnew
-            cp!(idxX, work.GX, work.GXnew)
+            cp!(work.GX, work.GXnew)
             cp!(idxD, work.Gd, work.Gdnew)
         end
 
@@ -175,7 +180,7 @@ function spg(
         # best iterate found so far
         if sig < sigbest
             sigbest = sig
-            cp!(idxX, work.ZXbest, ZX)
+            cp!(work.ZXbest, ZX)
             cp!(idxD, work.Zdbest, work.Zd)
         end
 
@@ -226,9 +231,8 @@ function stress(
     idxD::AbstractVector{Int64},
     Dij::Matrix{Int64},
     Zd::Vector{Float64},
-    work::WORKSPACE
+    work::SPG_WORKSPACE
 )
-
     sig = 0.0
 
     @inbounds @views for k in idxD
@@ -248,16 +252,14 @@ end
 
 # gradient of stress
 function grad_stress(
-    idxX::AbstractVector{Int64},
     idxD::AbstractVector{Int64},
     Dij::Matrix{Int64},
     ZX::Matrix{Float64},
     Zd::Vector{Float64},
     GX::Matrix{Float64},
     Gd::Vector{Float64},
-    work::WORKSPACE
+    work::SPG_WORKSPACE
 )
-
     work.work .= 0.0
     GX .= 0.0
 

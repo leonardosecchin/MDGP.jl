@@ -8,16 +8,19 @@
 # v1 = X[:,l-1] .- X[:,l-2]
 # v2 = X[:,l-3] .- X[:,l-2]
 # see Gonçalves, Mucherino. Discretization orders and efficient computation of cartesian coordinates for distance geometry. Optim Lett (2014) 8:2111-2125
-@inline function computeU!(U, X, l1, l2, l3)
+
+Umatrix = Matrix{Float64}(undef,3,3)
+
+@inline function computeU!(X, l1, l2, l3)
     @inbounds @views begin
-        @. U[1:3,1] = X[1:3,l1] - X[1:3,l2] #v1
-        @. U[1:3,3] = X[1:3,l3] - X[1:3,l2] #v2
-        U[1:3,3] .= cross(U[1:3,1], U[1:3,3]) #v1 x v2
-        U[1:3,2] .= cross(U[1:3,3], U[1:3,1]) #(v1 x v2) x v1
+        @. Umatrix[1:3,1] = X[1:3,l1] - X[1:3,l2] #v1
+        @. Umatrix[1:3,3] = X[1:3,l3] - X[1:3,l2] #v2
+        Umatrix[1:3,3] .= cross(Umatrix[1:3,1], Umatrix[1:3,3]) #v1 x v2
+        Umatrix[1:3,2] .= cross(Umatrix[1:3,3], Umatrix[1:3,1]) #(v1 x v2) x v1
         # normalize
-        U[1:3,1] ./= norm(U[1:3,1])
-        U[1:3,2] ./= norm(U[1:3,2])
-        U[1:3,3] ./= norm(U[1:3,3])
+        Umatrix[1:3,1] ./= norm(Umatrix[1:3,1])
+        Umatrix[1:3,2] ./= norm(Umatrix[1:3,2])
+        Umatrix[1:3,3] ./= norm(Umatrix[1:3,3])
     end
 end
 
@@ -28,7 +31,6 @@ function construct_conformation!(
     X,
     fixed_torsions,
     adj,
-    work::WORKSPACE,
     maxtrials,
     par::MDGP_PARAMETERS,
     fixsign
@@ -49,7 +51,7 @@ function construct_conformation!(
         sintheta_l = sqrt(1.0 - costheta_l^2)
 
         # rotation matrix U w.r.t. vertices l-3, l-2, l-1
-        computeU!(work.U, X, l1, l2, l3)
+        computeU!(X, l1, l2, l3)
 
         ntrials = 0
         besttorsion = fixed_torsions[l]
@@ -64,9 +66,9 @@ function construct_conformation!(
             omega_l = pi * fixed_torsions[l] / 180.0
             sinomega_l, cosomega_l = sincos(omega_l)
 
-            X[1:3,l] .= X[1:3,l1] .+ d10*work.U*[-costheta_l ;
-                                                sintheta_l*cosomega_l ;
-                                                sintheta_l*sinomega_l ]
+            X[1:3,l] .= X[1:3,l1] .+ d10*Umatrix*[-costheta_l ;
+                                                   sintheta_l*cosomega_l ;
+                                                   sintheta_l*sinomega_l ]
 
             if maxtrials == 0
                 # just construct the conformation with the given angles
@@ -123,7 +125,7 @@ function construct_conformation!(
             l+1,
             data,
             X, fixed_torsions, adj,
-            work, maxtrials, par, fixsign
+            maxtrials, par, fixsign
         )
     else
         # end of construction
@@ -138,7 +140,6 @@ function improve_conformation!(
     X,
     fixed_torsions,
     adj,
-    work,
     par::MDGP_PARAMETERS
 )
 
@@ -178,7 +179,7 @@ function improve_conformation!(
 
             # reconstruct conformation from the last non udpated vertex
             construct_conformation!(
-                update_from_v, data, X, fixed_torsions, adj, work, par.N_tors, par, true
+                update_from_v, data, X, fixed_torsions, adj, par.N_tors, par, true
             )
 
             new_lde = LDE(data, idxD, X)
@@ -202,7 +203,7 @@ function improve_conformation!(
         # the conformation needs to be udpated; no torsion angle will be re-sorted
         if recompute
             construct_conformation!(
-                update_from_v, data, X, fixed_torsions, adj, work, 0, par, true
+                update_from_v, data, X, fixed_torsions, adj, 0, par, true
             )
         end
 

@@ -182,12 +182,12 @@ function mdgp_multistart(
     X = start_conformation(data)
 
     # initialize workspace
-    work = init_workspace(data, par)
+    spg_work = init_spg_workspace(data, par)
 
     # stress weights
-    work.w .= 1.0
-    @views work.w[idxDpred] .= 2.0      # discretization distances
-    work.w ./= norm(work.w)
+    spg_work.w .= 1.0
+    @views spg_work.w[idxDpred] .= 2.0      # discretization distances
+    spg_work.w ./= norm(spg_work.w)
 
     stop = false
 
@@ -255,7 +255,7 @@ function mdgp_multistart(
 
         # new conformation
         @inbounds if construct_conformation!(
-            4, data, X, fixed_torsions, adj, work, par.N_tors, par, false
+            4, data, X, fixed_torsions, adj, par.N_tors, par, false
         )
 
             total_count += 1
@@ -264,7 +264,7 @@ function mdgp_multistart(
             # they will still be satisfied.
             if par.N_impr > 0
                 improve_conformation!(
-                    idxDprednonpred, data, X, fixed_torsions, adj, work, par
+                    idxDprednonpred, data, X, fixed_torsions, adj, par
                 )
             end
 
@@ -300,17 +300,11 @@ function mdgp_multistart(
             spg_applied = false
             if !stop && rmsdpass
                 # different infeasible conformation, try to improve it through SPG
-                @views for k in 1:data.nd
-                    i,j = data.Dij[k,1:2]
-                    work.dists[k] = euclidean(X[1:3,i], X[1:3,j])
-                end
-
-                # apply SPG
                 if verbose > 2
                     println("\n\n>>> Trying to improve conformation through SPG")
                 end
                 strs, spg_it, st = spg(
-                    1:3*data.nv, idxDprednonpred, X, data, par, work, verbose
+                    idxDprednonpred, X, data, par, spg_work, verbose
                 )
 
                 mde, lde = MDE_LDE(data, X)

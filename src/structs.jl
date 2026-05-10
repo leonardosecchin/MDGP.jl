@@ -35,8 +35,7 @@ mutable struct MDGP_PARAMETERS
     max_time::Real      # max time in seconds
 end
 
-struct WORKSPACE
-    U::Matrix{Float64}
+struct SPG_WORKSPACE
     w::Vector{Float64}
     dists::Vector{Float64}
     Zd::Vector{Float64}
@@ -59,7 +58,10 @@ struct WORKSPACE
 end
 
 """
-Returns a structure MDGP_PARAMETERS with default values.
+    par = mdgp_default_parameters()
+
+Returns a structure MDGP_PARAMETERS with default values. See `mdgp_multistart`
+help for more details.
 """
 function mdgp_default_parameters()
     return MDGP_PARAMETERS(
@@ -88,11 +90,10 @@ function mdgp_default_parameters()
     )
 end
 
-function init_workspace(data::DATA, par::MDGP_PARAMETERS)
+function init_spg_workspace(data::DATA, par::MDGP_PARAMETERS)
     nv = data.nv
     nd = data.nd
-    return WORKSPACE(
-        Matrix{Float64}(undef,3,3),  # U
+    return SPG_WORKSPACE(
         Vector{Float64}(undef,nd),   # w
         Vector{Float64}(undef,nd),   # dists
         Vector{Float64}(undef,nd),   # Zd

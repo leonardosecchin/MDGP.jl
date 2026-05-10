@@ -6,7 +6,8 @@ end
 
 # bond length  : r_i = d_{i-1,i}
 # bond angle   : theta_i = "angle between segments i-2 --- i-1 and i-1 --- i"
-# torsion angle: omega_i = "angle between the normals through the planes deﬁned by the atoms i-3, i-2, i-1 and i-2, i-1, i"
+# torsion angle: omega_i = "angle between the normals through the planes deﬁned
+#                by the atoms i-3, i-2, i-1 and i-2, i-1, i"
 
 # given vertices i-2, i-1, i, compute the cosine of the bond angle theta_i
 # by the law of cosines:
@@ -21,7 +22,7 @@ function costheta(d10, d20, d21)
 end
 
 
-# Given vertices i-3, i-2, i-1, i, compute the cosine of the torsion angle omega_i:
+# Given vertices i-3, i-2, i-1, i, compute the cosine of the torsion angle:
 #
 # cos(omega_i) = r^2_{i-2} + d^2_{i-2,i} - 2 r_{i-2} d_{i-2,i} cos(theta_{i-1}) cos(theta_i) - d^2_{i-3,i}
 #                -----------------------------------------------------------------------------------------
@@ -31,8 +32,10 @@ end
 #                -----------------------------------------------------
 #                            sin(theta_{i-1}) sin(theta_i)
 #
-# The (possible) interval distance d30 = d^2_{i-3,i} must be fixed outside this function.
-# see Lavor, Liberti, Maculan. A note on "A branch-and-prune algorithm for the molecular distance geometry problem". Intl. Trans. in Op. Res. 18 (2011) 751-752
+# The (possible) interval distance d30 = d^2_{i-3,i} must be fixed outside this
+# function. See Lavor, Liberti, Maculan. A note on "A branch-and-prune algorithm
+# for the molecular distance geometry problem". Intl. Trans. in Op. Res. 18
+# (2011) 751-752
 
 function cosomega(d10, d32, d31, d21, d20, d30)
     costheta1 = costheta(d21,d31,d32)
@@ -113,6 +116,7 @@ function MDE_LDE(data::DATA, idxD, dists::Vector{Float64})
 
     return mde/length(idxD), lde
 end
+
 
 # centralize conformation w.r.t. all atoms
 function centralize!(X, Xout, idx)
