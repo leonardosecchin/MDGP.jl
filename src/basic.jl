@@ -1,3 +1,13 @@
+# convert v into a UnitRange if possible
+function consec_range(v)
+    if isempty(v)
+        return v
+    else
+        sort!(v)
+        return ifelse(v[end] - v[1] + 1 == length(v), v[1]:v[end], v)
+    end
+end
+
 # return [ lower d(i,j) ; upper d(i,j)] from D. Distance d(i,j) must exists in D
 @inline function d(i, j, data::DATA)
     return @inbounds @views data.D[data.ij_to_D[i,j], 1:end]

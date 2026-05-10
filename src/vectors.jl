@@ -81,13 +81,3 @@ end
     X::AbstractVecOrMat{Float64},
     Y::AbstractVecOrMat{Float64}
 ) = XdotY(1:length(X), X, Y)
-
-# convert v into a UnitRange if possible
-function consec_range(v)
-    if isempty(v)
-        return v
-    else
-        sort!(v)
-        return ifelse(v[end] - v[1] + 1 == length(v), v[1]:v[end], v)
-    end
-end

@@ -15,11 +15,11 @@ using DelimitedFiles
 export MDGP_PARAMETERS, mdgp_default_parameters
 export mdgp_multistart, mdgp_read
 
-include("structs.jl")
+include("param.jl")
+include("data.jl")
 include("check.jl")
-include("vectors.jl")
+# include("vectors.jl")
 include("basic.jl")
-include("preprocess.jl")
 include("spg.jl")
 include("conformation.jl")
 include("read.jl")
@@ -182,7 +182,9 @@ function mdgp_multistart(
     X = start_conformation(data)
 
     # initialize workspace
-    spg_work = init_spg_workspace(data, par)
+    spg_work = init_spg_workspace(idxDprednonpred, data, par)
+
+    U = Matrix{Float64}(undef,3,3)
 
     # stress weights
     spg_work.w .= 1.0
@@ -255,7 +257,7 @@ function mdgp_multistart(
 
         # new conformation
         @inbounds if construct_conformation!(
-            4, data, X, fixed_torsions, adj, par.N_tors, par, false
+            4, data, X, fixed_torsions, adj, par.N_tors, par, false, U
         )
 
             total_count += 1
@@ -264,7 +266,7 @@ function mdgp_multistart(
             # they will still be satisfied.
             if par.N_impr > 0
                 improve_conformation!(
-                    idxDprednonpred, data, X, fixed_torsions, adj, par
+                    idxDprednonpred, data, X, fixed_torsions, adj, par, U
                 )
             end
 
@@ -303,9 +305,20 @@ function mdgp_multistart(
                 if verbose > 2
                     println("\n\n>>> Trying to improve conformation through SPG")
                 end
+
+                # initial point for SPG
+                spg_work.x.X .= X
+                @inbounds @views for k in 1:data.nd
+                    i,j = data.Dij[k,1:2]
+                    spg_work.x.d[k] = clamp(euclidean(X[1:3,i], X[1:3,j]), data.D[k,1], data.D[k,2])
+                end
+
+                # apply SPG
                 strs, spg_it, st = spg(
-                    idxDprednonpred, X, data, par, spg_work, verbose
+                    data, par, max(par.spg_maxit, 20*data.nv), spg_work, verbose
                 )
+
+                X .= spg_work.x.X
 
                 mde, lde = MDE_LDE(data, X)
 

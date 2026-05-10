@@ -1,15 +1,3 @@
-# problem data
-struct DATA
-    nv::Int64
-    nd::Int64
-    Dij::Matrix{Int64}
-    D::Matrix{Float64}
-    P::Matrix{Int64}
-    torsions::Matrix{Float64}
-    preddists::Vector{Float64}
-    ij_to_D::SparseMatrixCSC{Int64, Int64}
-end
-
 mutable struct MDGP_PARAMETERS
     N_sols::Int64       # number of solutions required
     N_trial::Int64      # max number of initial trials
@@ -33,28 +21,6 @@ mutable struct MDGP_PARAMETERS
     # other
     tight_bounds::Bool  # try tightening the distance bounds
     max_time::Real      # max time in seconds
-end
-
-struct SPG_WORKSPACE
-    w::Vector{Float64}
-    dists::Vector{Float64}
-    Zd::Vector{Float64}
-    GX::Matrix{Float64}
-    Gd::Vector{Float64}
-    Pd::Vector{Float64}
-    ZXnew::Matrix{Float64}
-    Zdnew::Vector{Float64}
-    GXnew::Matrix{Float64}
-    Gdnew::Vector{Float64}
-    SX::Matrix{Float64}
-    YX::Matrix{Float64}
-    Sd::Vector{Float64}
-    Yd::Vector{Float64}
-    ZXbest::Matrix{Float64}
-    Zdbest::Vector{Float64}
-    idxD::Matrix{Int64}
-    work::Vector{Float64}
-    lastf::Vector{Float64}
 end
 
 """
@@ -87,31 +53,5 @@ function mdgp_default_parameters()
         # other
         true,     # try tightening the distance bounds
         7200      # max time in seconds
-    )
-end
-
-function init_spg_workspace(data::DATA, par::MDGP_PARAMETERS)
-    nv = data.nv
-    nd = data.nd
-    return SPG_WORKSPACE(
-        Vector{Float64}(undef,nd),   # w
-        Vector{Float64}(undef,nd),   # dists
-        Vector{Float64}(undef,nd),   # Zd
-        Matrix{Float64}(undef,3,nv), # GX
-        Vector{Float64}(undef,nd),   # Gd
-        Vector{Float64}(undef,nd),   # Pd
-        Matrix{Float64}(undef,3,nv), # ZXnew
-        Vector{Float64}(undef,nd),   # Zdnew
-        Matrix{Float64}(undef,3,nv), # GXnew
-        Vector{Float64}(undef,nd),   # Gdnew
-        Matrix{Float64}(undef,3,nv), # SX
-        Matrix{Float64}(undef,3,nv), # YX
-        Vector{Float64}(undef,nd),   # Sd
-        Vector{Float64}(undef,nd),   # Yd
-        Matrix{Float64}(undef,3,nv), # ZXbest
-        Vector{Float64}(undef,nd),   # Zdbest
-        Matrix{Int64}(undef,nv,2),   # idxD
-        Vector{Float64}(undef,nv),   # work
-        fill(-Inf, par.spg_lsm)      # lastf
     )
 end

@@ -1,3 +1,15 @@
+# problem data
+struct DATA
+    nv::Int64
+    nd::Int64
+    Dij::Matrix{Int64}
+    D::Matrix{Float64}
+    P::Matrix{Int64}
+    torsions::Matrix{Float64}
+    preddists::Vector{Float64}
+    ij_to_D::SparseMatrixCSC{Int64, Int64}
+end
+
 # pre-process data and initialize DATA structure
 function init_problem_data(Dij_orig, D_orig, P_orig, torsions_orig)
 
