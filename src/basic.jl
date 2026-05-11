@@ -13,6 +13,14 @@ end
     return @inbounds @views data.D[data.ij_to_D[i,j], 1:end]
 end
 
+# return ||X_i - X_j||
+function d(i, j, X::Matrix{Float64})
+    r = 0.0
+    for k in 1:3
+        r += (X[k,i] - X[k,j])^2
+    end
+    return sqrt(r)
+end
 
 # bond length  : r_i = d_{i-1,i}
 # bond angle   : θ_i = "angle between segments i-2 --- i-1 and i-1 --- i"
@@ -76,7 +84,7 @@ function LDE(data::DATA, idxD, X::Matrix{Float64})
     lde = 0.0
 
     @inbounds @views for k in idxD
-        dist = euclidean(X[1:3,data.Dij[k,1]], X[1:3,data.Dij[k,2]])
+        dist = d(data.Dij[k,1], data.Dij[k,2], X)
         L,U = data.D[k,1:2]
         if L == U
             lde = max(lde, abs(L - dist)/L)
@@ -93,7 +101,7 @@ function MDE_LDE(data::DATA, idxD, X::Matrix{Float64})
     lde = 0.0
 
     @inbounds @views for k in idxD
-        dist = euclidean(X[1:3,data.Dij[k,1]], X[1:3,data.Dij[k,2]])
+        dist = d(data.Dij[k,1], data.Dij[k,2], X)
         L,U = data.D[k,1:2]
         if L == U
             mde += abs(L - dist)/L

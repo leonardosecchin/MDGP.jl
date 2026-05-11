@@ -7,9 +7,7 @@ module MDGP
 using LinearAlgebra
 using SparseArrays
 using Printf
-using Distances
 using Random
-using Distributions
 using DelimitedFiles
 
 export MDGP_PARAMETERS, mdgp_default_parameters
@@ -303,7 +301,7 @@ function mdgp_multistart(
                 spg_work.x.X .= X
                 @inbounds @views for k in 1:data.nd
                     i,j = data.Dij[k,1:2]
-                    spg_work.x.d[k] = clamp(euclidean(X[1:3,i], X[1:3,j]), data.D[k,1], data.D[k,2])
+                    spg_work.x.d[k] = clamp(d(i, j, X), data.D[k,1], data.D[k,2])
                 end
 
                 # apply SPG

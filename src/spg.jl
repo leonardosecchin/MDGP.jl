@@ -82,7 +82,7 @@ function stress(
 
     @inbounds @views for k in work.idxD
         i,j = data.Dij[k,1:2]
-        work.dists[k] = euclidean(x.X[1:3,i], x.X[1:3,j])
+        work.dists[k] = d(i, j, x.X)
         σ += work.w[k] * (work.dists[k] - x.d[k])^2
         if isnan(σ)
             @show data.Dij[i,j]

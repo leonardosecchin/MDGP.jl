@@ -42,7 +42,7 @@ function construct_conformation!(
         # distances
         d10 = d(l1, l, data)[1]   # exact
         d20 = d(l2, l, data)[1]   # exact
-        d21 = euclidean(X[1:3,l2], X[1:3,l1])   # l1 and l2 already positioned
+        d21 = d(l2, l1, X)        # l1 and l2 already positioned
 
         # cosine/sine of the bond angle θ_l
         cosθ_l = cosθ(d10, d20, d21)
@@ -239,7 +239,7 @@ end
 function compute_partial_lde(l, data::DATA, X, adj)
     partial_lde = 0.0
     @inbounds @views for k in adj[l]
-        dist = euclidean(X[1:3,l], X[1:3,data.Dij[k,1]])
+        dist = d(l, data.Dij[k,1], X)
         L,U = data.D[k,1:2]
         if L == U
             partial_lde = max(partial_lde, abs(L - dist)/L)
