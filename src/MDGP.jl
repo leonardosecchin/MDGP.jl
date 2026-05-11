@@ -18,7 +18,6 @@ export mdgp_multistart, mdgp_read
 include("param.jl")
 include("data.jl")
 include("check.jl")
-# include("vectors.jl")
 include("basic.jl")
 include("spg.jl")
 include("conformation.jl")
