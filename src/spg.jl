@@ -81,11 +81,11 @@ function stress(
     σ = 0.0
 
     @inbounds @views for k in work.idxD
-        i,j = data.Dij[k,1:2]
+        i, j = data.Dij[k,1], data.Dij[k,2]
         work.dists[k] = d(i, j, x.X)
         σ += work.w[k] * (work.dists[k] - x.d[k])^2
         if isnan(σ)
-            @show data.Dij[i,j]
+            @show i,j
             @show work.w[k]
             @show x.d[k]
             @show work.dists[k]
@@ -113,7 +113,7 @@ function grad_stress!(
         distk = work.dists[k]
 
         if distk > 0.0
-            i,j = data.Dij[k,1:2]
+            i, j = data.Dij[k,1], data.Dij[k,2]
             aux = wk * (1.0 - dk/distk)
             work.work[i] += aux
             work.work[j] += aux

@@ -145,7 +145,7 @@ function mdgp_multistart(
     idxDnonpred = Int64[]   # extra
     idxDvdw = Int64[]       # Van der Walls
     @inbounds for k in 1:size(data.D,1)
-        i,j = data.Dij[k,1:2]
+        i, j = data.Dij[k,1], data.Dij[k,2]
         if (j in data.P[i,1:3]) || (i in data.P[j,1:3])
             push!(idxDpred, k)
         elseif data.D[k,2] < 900.0
@@ -300,7 +300,7 @@ function mdgp_multistart(
                 # initial point for SPG
                 spg_work.x.X .= X
                 @inbounds @views for k in 1:data.nd
-                    i,j = data.Dij[k,1:2]
+                    i, j = data.Dij[k,1], data.Dij[k,2]
                     spg_work.x.d[k] = clamp(d(i, j, X), data.D[k,1], data.D[k,2])
                 end
 

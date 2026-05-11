@@ -104,7 +104,7 @@ function mdgp_read(
     idxDnonpred = Int64[]   # other with lower and upper bounds
     idxDvdw = Int64[]       # Van der Waals (only lower bound is present)
     @inbounds for k in 1:size(D,1)
-        i,j = Dij[k,1:2]
+        i, j = Dij[k,1], Dij[k,2]
         if (j in P[i,1:3]) || (i in P[j,1:3])
             push!(idxDpred, k)
         elseif D[k,2] < 900.0
