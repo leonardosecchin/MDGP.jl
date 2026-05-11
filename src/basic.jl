@@ -15,18 +15,18 @@ end
 
 
 # bond length  : r_i = d_{i-1,i}
-# bond angle   : theta_i = "angle between segments i-2 --- i-1 and i-1 --- i"
-# torsion angle: omega_i = "angle between the normals through the planes deﬁned
+# bond angle   : θ_i = "angle between segments i-2 --- i-1 and i-1 --- i"
+# torsion angle: ω_i = "angle between the normals through the planes deﬁned
 #                by the atoms i-3, i-2, i-1 and i-2, i-1, i"
 
-# given vertices i-2, i-1, i, compute the cosine of the bond angle theta_i
+# given vertices i-2, i-1, i, compute the cosine of the bond angle θ_i
 # by the law of cosines:
 #
-# cos(theta_i) = d_{i-1,i}^2 + d_{i-2,i-1}^2 - d_{i-2,i}^2
-#                -----------------------------------------
-#                         2 d_{i-1,i} d_{i-2,i-1}
+# cos(θ_i) = d_{i-1,i}^2 + d_{i-2,i-1}^2 - d_{i-2,i}^2
+#            -----------------------------------------
+#                      2 d_{i-1,i} d_{i-2,i-1}
 
-function costheta(d10, d20, d21)
+function cosθ(d10, d20, d21)
     cosine = (d10^2 + d21^2 - d20^2)/(2.0*d21*d10)
     return sign(cosine) * min(abs(cosine),1.0)
 end
@@ -34,40 +34,40 @@ end
 
 # Given vertices i-3, i-2, i-1, i, compute the cosine of the torsion angle:
 #
-# cos(omega_i) = r^2_{i-2} + d^2_{i-2,i} - 2 r_{i-2} d_{i-2,i} cos(theta_{i-1}) cos(theta_i) - d^2_{i-3,i}
-#                -----------------------------------------------------------------------------------------
-#                                    2 r_{i-2} d_{i-2,i} sin(theta_{i-1}) sin(theta_i)
+# cos(ω_i) = r^2_{i-2} + d^2_{i-2,i} - 2 r_{i-2} d_{i-2,i} cos(θ_{i-1}) cos(θ_i) - d^2_{i-3,i}
+#            ---------------------------------------------------------------------------------
+#                                    2 r_{i-2} d_{i-2,i} sin(θ_{i-1}) sin(θ_i)
 #
-#              = costheta(d32,d30,d20) - cos(theta_{i-1}) cos(theta_i)
-#                -----------------------------------------------------
-#                            sin(theta_{i-1}) sin(theta_i)
+#              = cosθ(d32,d30,d20) - cos(θ_{i-1}) cos(θ_i)
+#                -----------------------------------------
+#                          sin(θ_{i-1}) sin(θ_i)
 #
 # The (possible) interval distance d30 = d^2_{i-3,i} must be fixed outside this
 # function. See Lavor, Liberti, Maculan. A note on "A branch-and-prune algorithm
 # for the molecular distance geometry problem". Intl. Trans. in Op. Res. 18
 # (2011) 751-752
 
-function cosomega(d10, d32, d31, d21, d20, d30)
-    costheta1 = costheta(d21,d31,d32)
-    costheta0 = costheta(d20,d10,d21)
-    r         = costheta(d32,d30,d20)
+function cosω(d10, d32, d31, d21, d20, d30)
+    cosθ1 = cosθ(d21,d31,d32)
+    cosθ0 = cosθ(d20,d10,d21)
+    r     = cosθ(d32,d30,d20)
 
-    cosine = (r - costheta1 * costheta0) / (sqrt(1.0 - costheta1^2) * sqrt(1.0 - costheta0^2))
+    cosine = (r - cosθ1 * cosθ0) / (sqrt(1.0 - cosθ1^2) * sqrt(1.0 - cosθ0^2))
     return sign(cosine) * min(abs(cosine),1.0)
 end
 
 
-# Compute the distance d_{i-3,i} given all exact distances between vertices i-3, i-2, i-1, i and the cosine of the torsion angle omega_i
+# Compute the distance d_{i-3,i} given all exact distances between vertices i-3, i-2, i-1, i and the cosine of the torsion angle ω_i
 
-function d30(d10, d32, d31, d21, d20, cosomega)
-    costheta1 = costheta(d32,d31,d21)
-    costheta0 = costheta(d20,d10,d21)
+function d30(d10, d32, d31, d21, d20, cosω)
+    cosθ1 = cosθ(d32,d31,d21)
+    cosθ0 = cosθ(d20,d10,d21)
 
-    sintheta0 = sqrt(1.0 - costheta0^2)
-    sintheta1 = sqrt(1.0 - costheta1^2)
+    sinθ0 = sqrt(1.0 - cosθ0^2)
+    sinθ1 = sqrt(1.0 - cosθ1^2)
 
-    # isolate d_{i-3,i} in the formula for the cosine of omega
-    return sqrt(d32^2 + d20^2 - 2.0*d32*d20*(cosomega*sintheta0*sintheta1 + costheta0*costheta1))
+    # isolate d_{i-3,i} in the formula for the cosine of ω
+    return sqrt(d32^2 + d20^2 - 2.0*d32*d20*(cosω*sinθ0*sinθ1 + cosθ0*cosθ1))
 end
 
 

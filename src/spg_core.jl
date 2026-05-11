@@ -12,7 +12,7 @@ struct SPG_WORKSPACE{V}
     y::V
     xbest::V
     work::Vector{Float64}
-    lastf::Vector{Float64}
+    lastσ::Vector{Float64}
 end
 
 function init_spg_workspace(idxD, data::DATA, par::MDGP_PARAMETERS)
@@ -32,7 +32,7 @@ function init_spg_workspace(idxD, data::DATA, par::MDGP_PARAMETERS)
         V(),   # y
         V(),   # xbest
         Vector{Float64}(undef,nv),   # work
-        fill(-Inf, par.spg_lsm)      # lastf
+        fill(-Inf, par.spg_lsm)      # lastσ
     )
 end
 
@@ -54,17 +54,17 @@ function spg(
     # box constraints
 
     # stress at the initial point
-    sig = f(data, work.x, work)
+    σ = f(data, work.x, work)
 
     # stress gradient at the initial point
     g!(data, work.x, work.g, work)
 
     # stress history
-    work.lastf .= -Inf
-    max_sig = sig
+    work.lastσ .= -Inf
+    max_σ = σ
 
     # save initial solution as the best
-    sigbest = sig
+    σbest = σ
     cp!(work.xbest, work.x, work)
 
     # initial spectral steplength
@@ -90,20 +90,20 @@ function spg(
     # main loop
     while (true)
 
-        (verbose > 2) && print_info(iter, sig, false, t)
+        (verbose > 2) && print_info(iter, σ, false, t)
 
         # test whether a solution was found
         mde, lde = MDE_LDE(data, 1:data.nd, work.dists)
-        if (sig <= par.tol_stress) || (mde <= par.tol_mde) || (lde <= par.tol_lde)
-            (verbose > 2) && print_info(iter, sig, true, t)
+        if (σ <= par.tol_stress) || (mde <= par.tol_mde) || (lde <= par.tol_lde)
+            (verbose > 2) && print_info(iter, σ, true, t)
 
-            sigbest = sig
+            σbest = σ
             status = 0
             break
         end
 
         if (iter >= maxit)
-            (verbose > 2) && print_info(iter, sig, true, t)
+            (verbose > 2) && print_info(iter, σ, true, t)
 
             cp!(work.x, work.xbest, work)
             status = 3
@@ -111,7 +111,7 @@ function spg(
         end
 
         # ITERATE
-        prev_sig = sig
+        prev_σ = σ
 
         # projected direction work.d = proj(x - lambda*g) - x
         proj_d!(data, lambda, work)
@@ -121,17 +121,17 @@ function spg(
 
         # first trial x + d
         xpay!(work.xnew, work.x, 1.0, work.d, work)
-        sig = f(data, work.xnew, work)
+        σ = f(data, work.xnew, work)
 
         # g'*d
         gtd = xdoty(work.g, work.d, work)
 
-        while (sig > max_sig + t*par.spg_eta*gtd) && (t > tmin)
+        while (σ > max_σ + t*par.spg_eta*gtd) && (t > tmin)
             if t <= 0.1
                 t /= 2.0
             else
                 # quadratic interpolation
-                tquad = -0.5*( gtd*(t^2) / (sig - prev_sig - t*gtd) )
+                tquad = -0.5*( gtd*(t^2) / (σ - prev_σ - t*gtd) )
 
                 if (tquad >= 0.1) && (tquad <= 0.9*t)
                     t = tquad
@@ -143,12 +143,12 @@ function spg(
 
             # new trial
             xpay!(work.xnew, work.x, t, work.d, work)
-            sig = f(data, work.xnew, work)
+            σ = f(data, work.xnew, work)
         end
 
         # steplength is too small, no progress can be expected
         if t <= tmin
-            (verbose > 2) && print_info(iter, sig, true, t)
+            (verbose > 2) && print_info(iter, σ, true, t)
 
             cp!(work.x, work.xbest, work)
             status = 4
@@ -172,26 +172,26 @@ function spg(
         end
 
         # save the new stress value to the history
-        @inbounds work.lastf[mod(iter+1,par.spg_lsm) + 1] = sig
+        @inbounds work.lastσ[mod(iter+1,par.spg_lsm) + 1] = σ
 
-        max_sig = maximum(work.lastf)
+        max_σ = maximum(work.lastσ)
 
         # best iterate found so far
-        if sig < sigbest
-            sigbest = sig
+        if σ < σbest
+            σbest = σ
             cp!(work.xbest, work.x, work)
         end
 
         # lack of progress?
         if par.spg_lacktol > 0.0
-            if ((max_sig - sig)/max(1.0, max_sig) > par.spg_lacktol)
+            if ((max_σ - σ)/max(1.0, max_σ) > par.spg_lacktol)
                 iter_lack = 0
             else
                 iter_lack += 1
             end
 
             if (iter_lack >= max(100, par.spg_lsm))
-                (verbose > 2) && print_info(iter, sig, true, t)
+                (verbose > 2) && print_info(iter, σ, true, t)
 
                 status = 2
                 break
@@ -201,17 +201,17 @@ function spg(
         iter += 1
     end
 
-    return sigbest, iter, status
+    return σbest, iter, status
 end
 
 # print iterate information
-function print_info(iter, sig, final, t)
+function print_info(iter, σ, final, t)
     if (mod(iter,20000) == 0) && !(final)
         println()
         println("  SPG it |     stress | steplength |")
         println(" -----------------------------------")
     end
     if (mod(iter,1000) == 0) || (final)
-        @printf(" %7d | %10.3e | %10.3e |\n", iter, sig, t)
+        @printf(" %7d | %10.3e | %10.3e |\n", iter, σ, t)
     end
 end

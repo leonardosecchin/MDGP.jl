@@ -44,9 +44,9 @@ function construct_conformation!(
         d20 = d(l2, l, data)[1]   # exact
         d21 = euclidean(X[1:3,l2], X[1:3,l1])   # l1 and l2 already positioned
 
-        # cosine/sine of the bond angle theta_l
-        costheta_l = costheta(d10, d20, d21)
-        sintheta_l = sqrt(1.0 - costheta_l^2)
+        # cosine/sine of the bond angle θ_l
+        cosθ_l = cosθ(d10, d20, d21)
+        sinθ_l = sqrt(1.0 - cosθ_l^2)
 
         # rotation matrix U w.r.t. vertices l-3, l-2, l-1
         computeU!(U, X, l1, l2, l3)
@@ -60,13 +60,13 @@ function construct_conformation!(
                 break
             end
 
-            # cosine/sine of the torsion angle omega_l
-            omega_l = pi * fixed_torsions[l] / 180.0
-            sinomega_l, cosomega_l = sincos(omega_l)
+            # cosine/sine of the torsion angle ω_l
+            ω_l = pi * fixed_torsions[l] / 180.0
+            sinω_l, cosω_l = sincos(ω_l)
 
-            X[1:3,l] .= X[1:3,l1] .+ d10*U*[-costheta_l ;
-                                             sintheta_l*cosomega_l ;
-                                             sintheta_l*sinomega_l ]
+            X[1:3,l] .= X[1:3,l1] .+ d10*U*[-cosθ_l ;
+                                             sinθ_l*cosω_l ;
+                                             sinθ_l*sinω_l ]
 
             if maxtrials == 0
                 # just construct the conformation with the given angles
@@ -224,11 +224,11 @@ function start_conformation(data::DATA)
     @inbounds X[1:3,1] .= 0.0
     @inbounds X[1:3,2] .= [-d21; 0.0; 0.0]
 
-    costheta3 = costheta(d10, d20, d21)
+    cosθ3 = cosθ(d10, d20, d21)
 
     @inbounds X[1:3,3] .= [
-        d10*costheta3 - d21;
-        d10*sqrt(1.0 - costheta3^2);
+        d10*cosθ3 - d21;
+        d10*sqrt(1.0 - cosθ3^2);
         0.0
     ]
 

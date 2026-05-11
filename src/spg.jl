@@ -78,13 +78,13 @@ function stress(
     x::SPGX_VECTOR,
     work::SPG_WORKSPACE
 )
-    sig = 0.0
+    σ = 0.0
 
     @inbounds @views for k in work.idxD
         i,j = data.Dij[k,1:2]
         work.dists[k] = euclidean(x.X[1:3,i], x.X[1:3,j])
-        sig += work.w[k] * (work.dists[k] - x.d[k])^2
-        if isnan(sig)
+        σ += work.w[k] * (work.dists[k] - x.d[k])^2
+        if isnan(σ)
             @show data.Dij[i,j]
             @show work.w[k]
             @show x.d[k]
@@ -93,7 +93,7 @@ function stress(
         end
     end
 
-    return sig/2.0
+    return σ/2.0
 end
 
 
