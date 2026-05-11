@@ -68,11 +68,11 @@ default values is given below.
 ### Generation of conformations
 
 - `N_sols`: number of solutions required (`1`)
-- `N_trial`: max number of initial trials (`500`)
+- `N_trial`: maximum number of initial trials (`500`)
 - `N_conf`: number of initial conformations (`50`)
 - `N_impr`: number of improvement trials (`3`)
-- `N_tors`: max number of torsion angles trials (`20`)
-- `N_similar`: max number of consecutive similar initial conformations (`50`)
+- `N_tors`: maximum number of torsion angles trials (`20`)
+- `N_similar`: maximum number of consecutive similar initial conformations (`50`)
 
 ### Tolerances
 
@@ -87,9 +87,9 @@ default values is given below.
 - `spg_maxit`: maximum number of SPG iterations equals to max(spg_maxit, 20*#atoms) (`30000`)
 - `spg_lacktol`: tolerance to declare lack of progress (`1e-8`)
 - `spg_eta`: Armijo's parameter (`1e-4`)
-- `spg_lsm`: length of the history for non-monotone line search (`10`)
-- `spg_lmin`: minimum value for spectral steplength (`1e-20`)
-- `spg_lmax`: maximum value for spectral steplength (`1e+20`)
+- `spg_lsm`: history length for nonmonotone line search (`10`)
+- `spg_lmin`: minimum spectral steplength (`1e-20`)
+- `spg_lmax`: maximum spectral steplength (`1e+20`)
 
 ### Other
 
@@ -123,9 +123,9 @@ function mdgp_multistart(
     check_param(par.tol_exact >= 0, "tol_exact must be positive")
     check_param(par.tol_similar >= 0, "tol_similar must be non negative")
 
-    if seed >= 0
-        Random.seed!(seed)
-    end
+    (seed >= 0) && Random.seed!(seed)
+
+    (verbose > 0) && printbanner(par)
 
     time_pre = @elapsed begin
 
@@ -221,16 +221,14 @@ function mdgp_multistart(
     if verbose > 0
         ndexact = count(data.D[:,2] .- data.D[:,1] .<= par.tol_exact)
         @printf("Time preprocess phase and allocation: %.6lf s\n", time_pre)
-        println("Preprocessed data has $(data.nv) atoms, $(ndexact) exact distances and $(data.nd - ndexact) interval distances.")
+        println("Preprocessed data has $(data.nv) atoms, $(ndexact) exact distances\nand $(data.nd - ndexact) interval distances.")
     end
 
     # ======================
     # Starting conformations
     # ======================
 
-    if verbose > 0
-        println("\nComputing initial conformations...")
-    end
+    (verbose > 0) && println("\nComputing initial conformations...")
 
     time_total = 0.0
     time_init = 0.0
@@ -239,9 +237,7 @@ function mdgp_multistart(
 
         time_initk = @elapsed begin
 
-        if verbose > 0
-            print("\rAttempt $(total_count), $(length(sols)) conformations found")
-        end
+        (verbose > 0) && print("\rAttempt $(total_count), $(length(sols)) conformations found")
 
         if count(soltypes .>= 0) >= par.N_sols
             stop = true
@@ -301,9 +297,7 @@ function mdgp_multistart(
             spg_applied = false
             if !stop && rmsdpass
                 # different infeasible conformation, try to improve it through SPG
-                if verbose > 2
-                    println("\n\n>>> Trying to improve conformation through SPG")
-                end
+                (verbose > 2) && println("\n\n>>> Trying to improve conformation through SPG")
 
                 # initial point for SPG
                 spg_work.x.X .= X
@@ -362,7 +356,8 @@ function mdgp_multistart(
     if verbose > 0
         println("\r$(length(sols)) initial conformations computed in $(total_count) trials.")
 
-        println("\nSUMMARY\n$(repeat('-',48))")
+        println()
+        println('='^23," Summary ",'='^24)
         @printf("Total time: %.6lf s\n", time_total)
         println("Number of solutions found: $(count(soltypes .>= 0))")
         b = argmin(mdes)
@@ -371,6 +366,36 @@ function mdgp_multistart(
     end
 
     return sols, soltypes, ldes, mdes, time_init, time_total
+end
+
+function printbanner(par::MDGP_PARAMETERS)
+    println("\nMDGP.jl, a package to solve the Molecular Distance")
+    println("Geometry Problem (MDGP) with interval data")
+    println()
+    println('='^22," Parameters ",'='^22)
+    @printf("Number of solutions required                   %9d\n", par.N_sols)
+    @printf("Maximum number of initial trials               %9d\n", par.N_trial)
+    @printf("Number of initial conformations                %9d\n", par.N_conf)
+    @printf("Number of improvement trials                   %9d\n", par.N_impr)
+    @printf("Maximum number of torsion angles trials        %9d\n", par.N_tors)
+    @printf("Max number of consecutive similar init conf    %9d\n\n", par.N_similar)
+    # tolerances
+    @printf("Tolerance for optimality (LDE)                 %9.2e\n", par.tol_lde)
+    @printf("Tolerance for optimality (MDE)                 %9.2e\n", par.tol_mde)
+    @printf("Tolerance for optimality (SPG, stress)         %9.2e\n", par.tol_stress)
+    @printf("Max length to consider a distance exact        %9.2e\n", par.tol_exact)
+    @printf("Tol to consider two conformations similar      %9.2e\n\n", par.tol_similar)
+    # SPG options
+    @printf("Maximum number of SPG iterations               %9d\n", par.spg_maxit)
+    @printf("Tol to declare lack of progress in SPG         %9.2e\n", par.spg_lacktol)
+    @printf("Armijo's parameter                             %9.2e\n", par.spg_eta)
+    @printf("History length for nonmonotone line search     %9d\n", par.spg_lsm)
+    @printf("Minimum spectral steplength                    %9.2e\n", par.spg_lmin)
+    @printf("Maximum spectral steplength                    %9.2e\n\n", par.spg_lmax)
+    # other
+    @printf("Try tightening the distance bounds             %9s\n", par.tight_bounds ? "T" : "F")
+    @printf("Maximum time in seconds                        %9.2e\n", par.max_time)
+    println('='^56)
 end
 
 end

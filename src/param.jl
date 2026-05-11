@@ -15,9 +15,9 @@ mutable struct MDGP_PARAMETERS
     spg_maxit::Int64    # maximum number of SPG iterations
     spg_lacktol::Real   # tolerance to declare lack of progress in SPG
     spg_eta::Real       # Armijo's parameter
-    spg_lsm::Int64      # length of the history for non-monotone line search
-    spg_lmin::Real      # minimum value for spectral steplength
-    spg_lmax::Real      # maximum value for spectral steplength
+    spg_lsm::Int64      # length of the history for nonmonotone line search
+    spg_lmin::Real      # minimum spectral steplength
+    spg_lmax::Real      # maximum spectral steplength
     # other
     tight_bounds::Bool  # try tightening the distance bounds
     max_time::Real      # max time in seconds

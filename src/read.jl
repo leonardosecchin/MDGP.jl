@@ -9,7 +9,7 @@ function omega(l, P, X)
     return 180 * atan(
         norm(b) * dot(a, cross(b, c)),
         dot(cross(a, b), cross(b, c))
-        ) / pi
+    ) / pi
 end
 
 """

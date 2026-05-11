@@ -90,16 +90,12 @@ function spg(
     # main loop
     while (true)
 
-        if verbose > 2
-            print_info(iter, sig, false, t)
-        end
+        (verbose > 2) && print_info(iter, sig, false, t)
 
         # test whether a solution was found
         mde, lde = MDE_LDE(data, 1:data.nd, work.dists)
         if (sig <= par.tol_stress) || (mde <= par.tol_mde) || (lde <= par.tol_lde)
-            if verbose > 2
-                print_info(iter, sig, true, t)
-            end
+            (verbose > 2) && print_info(iter, sig, true, t)
 
             sigbest = sig
             status = 0
@@ -107,9 +103,7 @@ function spg(
         end
 
         if (iter >= maxit)
-            if verbose > 2
-                print_info(iter, sig, true, t)
-            end
+            (verbose > 2) && print_info(iter, sig, true, t)
 
             cp!(work.x, work.xbest, work)
             status = 3
@@ -154,9 +148,7 @@ function spg(
 
         # steplength is too small, no progress can be expected
         if t <= tmin
-            if verbose > 2
-                print_info(iter, sig, true, t)
-            end
+            (verbose > 2) && print_info(iter, sig, true, t)
 
             cp!(work.x, work.xbest, work)
             status = 4
@@ -199,9 +191,7 @@ function spg(
             end
 
             if (iter_lack >= max(100, par.spg_lsm))
-                if verbose > 2
-                    print_info(iter, sig, true, t)
-                end
+                (verbose > 2) && print_info(iter, sig, true, t)
 
                 status = 2
                 break

@@ -149,26 +149,20 @@ function tight_bounds!(data::DATA, par::MDGP_PARAMETERS, verbose)
 
                 # lower bound
                 if data.D[k,1] < d30L
-                    if verbose > 1
-                        @printf("lower bound of d_%d,%d was improved from %.6lf to %.6lf\n",i3,i,data.D[k,1],d30L)
-                    end
+                    (verbose > 1) && @printf("lower bound of d_%d,%d was improved from %.6lf to %.6lf\n",i3,i,data.D[k,1],d30L)
                     data.D[k,1] = d30L
                     modified = true
                 end
 
                 # upper bound
                 if data.D[k,2] > d30U
-                    if verbose > 1
-                        @printf("upper bound of d_%d,%d was improved from %.6lf to %.6lf\n",i3,i,data.D[k,2],d30U)
-                    end
+                    (verbose > 1) && @printf("upper bound of d_%d,%d was improved from %.6lf to %.6lf\n",i3,i,data.D[k,2],d30U)
                     data.D[k,2] = d30U
                     modified = true
                 end
 
                 if data.D[k,1] > data.D[k,2]
-                    if verbose > 1
-                        @warn "After tightening the bounds, the distance between $(i3) and $(i) was found to be inconsistent"
-                    end
+                    (verbose > 1) && @warn "After tightening the bounds, the distance between $(i3) and $(i) was found to be inconsistent"
                     return true
                 end
 
