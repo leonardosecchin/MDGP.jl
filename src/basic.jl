@@ -85,7 +85,7 @@ function LDE(data::DATA, idxD, X::Matrix{Float64})
 
     @inbounds @views for k in idxD
         dist = d(data.Dij[k,1], data.Dij[k,2], X)
-        L,U = data.D[k,1:2]
+        L, U = data.D[k,1], data.D[k,2]
         if L == U
             lde = max(lde, abs(L - dist)/L)
         else
@@ -102,7 +102,7 @@ function MDE_LDE(data::DATA, idxD, X::Matrix{Float64})
 
     @inbounds @views for k in idxD
         dist = d(data.Dij[k,1], data.Dij[k,2], X)
-        L,U = data.D[k,1:2]
+        L, U = data.D[k,1], data.D[k,2]
         if L == U
             mde += abs(L - dist)/L
             lde = max(lde, abs(L - dist)/L)
@@ -122,7 +122,7 @@ function MDE_LDE(data::DATA, idxD, dists::Vector{Float64})
     lde = 0.0
 
     @inbounds @views for k in idxD
-        L,U = data.D[k,1:2]
+        L, U = data.D[k,1], data.D[k,2]
         if L == U
             mde += abs(L - dists[k])/L
             lde = max(lde, abs(L - dists[k])/L)

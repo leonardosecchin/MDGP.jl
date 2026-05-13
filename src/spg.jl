@@ -54,11 +54,9 @@ function proj_d!(data::DATA, lambda::Float64, work::SPG_WORKSPACE)
     end
 
     @inbounds @views for k in work.idxD
-        dk = work.d.d[k]
+        L, U = data.D[k,1], data.D[k,2]
         xk = work.x.d[k]
-        aux = xk + dk
-
-        L,U = data.D[k,1:2]
+        aux = xk + work.d.d[k]
         if aux < L
             work.d.d[k] = L - xk
         elseif aux > U

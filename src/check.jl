@@ -6,6 +6,6 @@ end
 
 function check(cond, msg)
     if !cond
-        throw(msg)
+        error(msg)
     end
 end

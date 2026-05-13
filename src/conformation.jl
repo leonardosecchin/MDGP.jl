@@ -240,7 +240,7 @@ function compute_partial_lde(l, data::DATA, X, adj)
     partial_lde = 0.0
     @inbounds @views for k in adj[l]
         dist = d(l, data.Dij[k,1], X)
-        L,U = data.D[k,1:2]
+        L, U = data.D[k,1], data.D[k,2]
         if L == U
             partial_lde = max(partial_lde, abs(L - dist)/L)
         else
