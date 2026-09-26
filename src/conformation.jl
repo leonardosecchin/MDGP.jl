@@ -7,17 +7,22 @@
 # where
 # v1 = X[:,l-1] .- X[:,l-2]
 # v2 = X[:,l-3] .- X[:,l-2]
-# see Gonçalves, Mucherino. Discretization orders and efficient computation of cartesian coordinates for distance geometry. Optim Lett (2014) 8:2111-2125
+# see Gonçalves, Mucherino. Discretization orders and efficient computation of
+# cartesian coordinates for distance geometry. Optim Lett (2014) 8:2111-2125
 @inline function computeU!(U, X, l1, l2, l3)
     @inbounds @views begin
-        @. U[1:3,1] = X[1:3,l1] - X[1:3,l2] #v1
-        @. U[1:3,3] = X[1:3,l3] - X[1:3,l2] #v2
-        U[1:3,3] .= cross(U[1:3,1], U[1:3,3]) #v1 x v2
-        U[1:3,2] .= cross(U[1:3,3], U[1:3,1]) #(v1 x v2) x v1
+        @. U[:,1] = X[1:3,l1] - X[1:3,l2] #v1
+        @. U[:,3] = X[1:3,l3] - X[1:3,l2] #v2
+        v1_n = norm(U[:,1])
+        v2_n = norm(U[:,3])
+        U[:,3] .= cross(U[:,1], U[:,3]) #v1 x v2
+        normal_n = norm(U[:,3])
+        check(normal_n > eps() * v1_n * v2_n, "Collinear predecessors found!")
+        U[:,2] .= cross(U[:,3], U[:,1]) #(v1 x v2) x v1
         # normalize
-        U[1:3,1] ./= norm(U[1:3,1])
-        U[1:3,2] ./= norm(U[1:3,2])
-        U[1:3,3] ./= norm(U[1:3,3])
+        U[:,1] ./= v1_n
+        U[:,2] ./= norm(U[:,2])
+        U[:,3] ./= normal_n
     end
 end
 
@@ -131,7 +136,8 @@ function construct_conformation!(
     end
 end
 
-# try to improve a given conformation w.r.t. "objective" by flipping signs of given atoms
+# try to improve a given conformation w.r.t. "objective" by flipping signs of
+# given atoms
 function improve_conformation!(
     idxD,
     data::DATA,
@@ -159,7 +165,8 @@ function improve_conformation!(
             # Test whether the sign of the torsion angle can be flipped.
             # This occurs when
             #   P[v,4] = 0  OR
-            #   P[v,4] = 0  AND  minus "fixed torsion angle" lies in the torsion angle interval
+            #   P[v,4] = 0  AND  minus "fixed torsion angle" lies in the torsion
+            #   angle interval
             if (data.P[v,4] != 0) &&
                (
                (-fixed_torsions[v] < data.P[v,4]*data.torsions[v,1] - data.torsions[v,2]) ||
@@ -171,7 +178,8 @@ function improve_conformation!(
             # flip sign
             fixed_torsions[v] *= -1.0
 
-            # if the conformation is up to date, we only need to compute it from v
+            # if the conformation is up to date, we only need to compute it
+            # from v
             if !recompute
                 update_from_v = v
             end
@@ -199,7 +207,8 @@ function improve_conformation!(
             end
         end
 
-        # the conformation needs to be udpated; no torsion angle will be re-sorted
+        # the conformation needs to be udpated; no torsion angle will be
+        # re-sorted
         if recompute
             construct_conformation!(
                 update_from_v, data, X, fixed_torsions, adj, 0, par, true, U
@@ -244,7 +253,9 @@ function compute_partial_lde(l, data::DATA, X, adj)
         if L == U
             partial_lde = max(partial_lde, abs(L - dist)/L)
         else
-            partial_lde = max(partial_lde, max( max(L - dist, 0.0)/L, max(dist - U, 0.0)/U ) )
+            partial_lde = max(
+                partial_lde, max( max(L - dist, 0.0)/L, max(dist - U, 0.0)/U )
+            )
         end
     end
     return partial_lde
@@ -252,7 +263,8 @@ end
 
 function sort_torsion_angle(l, data::DATA, sgn)
     # P[l,4] * torsion[l,1] is the center of the interval;
-    # torsion[l,2] is the shift from center, so the interval has length 2*torsion[l,2]
+    # torsion[l,2] is the shift from center, so the interval has length
+    # 2*torsion[l,2]
 
     s = sgn * data.torsions[l,1]
 
